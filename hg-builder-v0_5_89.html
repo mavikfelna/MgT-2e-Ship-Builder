@@ -1354,6 +1354,13 @@ const DATA = {
     concealed:{costPerTon:20000,maxPctHull:.05},
     armoury:{tons:1,cost:250000,per:"25 crew or 5 marines"},     // p.59
     probeDrones:{per:10,tons:2,cost:1000000,tl:9,costAdv:1600000,tlAdv:12}, // HG p.62 — std TL9 MCr0,5/t ; advanced TL12 MCr0,8/t (5 sondes/t)
+    miningDrones:{per:10,tons:2,cost:100000,tl:8,capacityPer10:10},      // HG p.62 — TL8 MCr0.1/t, 10 tons/day per 10 drones
+    repairDrones:{per:10,tons:2,cost:200000,tl:8,capacityPct:0.01},     // HG p.62 — TL8 MCr0.2/t, 1% of hull per 10 drones
+    breachingTube:{tons:3,cost:3000000,tl:8,notes:"DM+1 to Boarding"},   // HG p.62 — External Systems
+    grapplingArm:{tons:2,cost:1000000,tl:8,notes:"Move 2× tons"},        // HG p.62 — External Systems
+    heavyGrapplingArm:{tons:6,cost:3000000,tl:8,notes:"Move 10× tons"}, // HG p.62 — External Systems
+    towCable:{tons:0.01,cost:5000,tl:8,notes:"1% of Hull"},            // HG p.62 — External Systems
+    unrepSystem:{tons:1,cost:500000,tl:8,notes:"Transfer 20× tons/hour"}, // HG p.62 — External Systems
     lifeScanner:{base:{tl:12,tons:1,cost:2000000,power:1},suite:{tl:14,tons:1,cost:4000000,power:1}}, // HG p.52 — Life Scanner / Analysis Suite (D24)
     comfort:{ // HG p.56-58 — Confort & Common Areas (D25), additifs défaut 0
       radiation:{tl:7,costPerHullTon:25000},      // 0 t ; Cr25k / t de COQUE
@@ -1382,7 +1389,23 @@ const DATA = {
     extCargoMount:{costPerTon:1000},                             // HG p.52 (P8) — external rack, Cr1000/t of external cargo, no internal tonnage
     workshop:{tons:6,cost:900000},                               // profil p.160; règle à confirmer
     briefing:{tons:4,cost:500000},                               // p.59 (DM+1 Tactics)
-    biosphere:{costPerTon:200000,power:1} },                     // p.59 — eliminates life support for 2 pax/ton
+    biosphere:{costPerTon:200000,power:1},                     // p.59 — eliminates life support for 2 pax/ton
+    crewArmoury:{tons:1,cost:250000,capacity:25},               // HG p.59 — 1t per 25 crew
+    marineArmoury:{tons:1,cost:250000,capacity:5},              // HG p.59 — 1t per 5 marines
+    baseSupport:{tons:12,cost:4000000,tl:10},                   // HG p.59 — Base Support Facility
+    constructionDeck:{tons:0,costPerTon:500000},                // HG p.59 — Construction Deck
+    gamingSpace:{tons:1.5,cost:6000},                            // HG p.59 — Gaming Space
+    shrineToHeroes:{tons:4,cost:500000},                       // HG p.59 — Shrine to Heroes
+    vault:{costPerTon:500000,minTons:4,maxTons:40},            // HG p.60 — Vault (4-40t, MCr0.5/t)
+    ceremonialSpace:{                                           // Droyne Ceremonial Chambers
+      minor:{tons:6,cost:250000},                              // Minor Ceremonial Space
+      major:{tons:20,cost:1000000},                             // Major Ceremonial Space
+      minorCitadel:{tons:12,cost:750000},                       // Minor Ceremonial Citadel
+      majorCitadel:{tons:40,cost:1500000}                       // Major Ceremonial Citadel
+    },
+    cargoNet:{costPerTon:10000},                               // HG p.58 — Cargo Net
+    cargoScoop:{cost:1000000}                                  // HG p.58 — Cargo Scoop
+  },
   bridgeOptions: {                                               // HG p.51-52
     holographic:{tl:9,costMult:.25},                             // +25% bridge cost, DM+2 initiative
     detachable:{costMult:.50,tonsMult:.20}                       // +50% cost, +20% tons; min sizes p.51

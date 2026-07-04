@@ -1320,7 +1320,20 @@ const DATA = {
       "Multi-Warhead Nuclear":{tl:8,cost:600000},"Nuclear":{tl:7,cost:225000},
       "Ortillery":{tl:8,cost:1000000},"Plasma":{tl:12,cost:650000},
       "Antimatter":{tl:20,cost:900000},"Antimatter Bomb-Pumped":{tl:21,cost:800000},
-      "Multi-Warhead Antimatter":{tl:21,cost:2000000} } },
+      "Multi-Warhead Antimatter":{tl:21,cost:2000000} },
+    spinalMounts:{                                               // HG p.39 — Spinal Weapons
+      "Antimatter":{tl:21,tons:12000,power:2500,cost:5000000000,maxTonnage:200000},
+      "Basic Disintegrator":{tl:20,tons:5000,power:2500,cost:110000000,maxTonnage:100000},
+      "Improved Disintegrator":{tl:22,tons:5000,power:3000,cost:200000000,maxTonnage:150000},
+      "Advanced Disintegrator":{tl:24,tons:4000,power:4000,cost:300000000},
+      "Mass Driver":{tl:10,tons:5000,power:250,cost:1500000000,maxTonnage:100000},
+      "Meson":{tl:12,tons:7500,power:1000,cost:2000000000,maxTonnage:75000},
+      "Neutron Laser":{tl:16,tons:20000,power:6000,cost:25000000000},
+      "Particle":{tl:11,tons:3500,power:1000,cost:1000000000,maxTonnage:28000},
+      "Railgun":{tl:10,tons:3500,power:500,cost:500000000,maxTonnage:21000},
+      "Super Laser":{tl:16,tons:20000,power:6000,cost:25000000000},
+      "Tachyon Cannon":{tl:14,tons:3500,power:5000,cost:750000000,maxTonnage:28000},
+      "HASWAT":{tl:11,tons:9000,power:1000,cost:10000000000} } },
   screens: {                                                     // HG p.40-41 — Screens
     "Deflector Screens":{tl:10,tons:5,power:10,cost:5000000},
     "Energy Shields":{tl:14,tons:50,power:20,cost:25000000},
@@ -1357,6 +1370,12 @@ const DATA = {
       IV:{tons:20,cost:4000000,maxAtt:2000,label:"Type IV"},
       V:{tons:50,cost:8000000,maxAtt:Infinity,label:"Type V"} } },
     sensorStation:{tons:1,cost:500000},                            // HG p.52 — poste de capteurs : 1 t / MCr0,5, 0 énergie ; 1 tâche capteur de plus/round ; éligibilité ≤7500t (D23, RAW)
+    sensorPackages:{                                               // HG p.52-54 — Optional Sensor Packages
+      emProtectionSuite:{tl:11,tons:6,power:3,cost:3000000,notes:"Countermeasures Suite"}, // Aliens of Charted Space Vol 1 p.156
+      countermeasuresSuite:{tl:13,tons:2,power:1,cost:4000000},      // HG p.54 — Military Countermeasures Suite
+      militaryCountermeasuresSuite:{tl:15,tons:0,power:15,cost:28000000,notes:"DM+6 to Jam/EW"}, // HG p.54
+      advancedCountermeasuresSuite:{tl:16,tons:0,power:20,cost:40000000,notes:"DM+8 to Jam/EW"} // HG p.54
+    },
     scoopsCost:1000000, medbay:{tons:4,cost:2000000,power:1},
     lab:{tons:4,cost:1000000}, library:{tl:8,tons:4,cost:4000000},
     concealed:{costPerTon:20000,maxPctHull:.05},

@@ -1271,7 +1271,9 @@ const DATA = {
     "Screen Optimiser":{bw:10,tl:10,cost:5000000},
     "Virtual Crew/0":{bw:5,tl:10,cost:1000000},"Virtual Crew/1":{bw:10,tl:13,cost:5000000},"Virtual Crew/2":{bw:15,tl:15,cost:10000000},
     "Virtual Gunner/0":{bw:5,tl:9,cost:1000000},"Virtual Gunner/1":{bw:10,tl:12,cost:5000000},"Virtual Gunner/2":{bw:15,tl:15,cost:10000000},
-    "Conscious Intelligence/1":{bw:40,tl:16,cost:25000000}
+    "Conscious Intelligence/1":{bw:40,tl:16,cost:25000000},
+    "Conscious Intelligence/2":{bw:25,tl:17,cost:20000000},      // HG p.75 — Computer is NPC with Int 15 and Edu 15
+    "Conscious Intelligence/3":{bw:10,tl:18,cost:15000000}       // HG p.75 — Computer is NPC with Int 15 and Edu 15
   },
   sensors: {                                                     // HG p.21
     "Basic":         {tl:8, dm:-4,power:0,tons:0,cost:0},
@@ -1338,7 +1340,27 @@ const DATA = {
         "Mass Driver Cannon":{tl:10,power:25,cost:15000000}
       },
       small:{                                                   // Small Bays (50t)
-        // Small bay weapons would go here
+        "Antimatter Streamer":{tl:17,power:160,cost:55000000},
+        "Beam Laser Bay":{tl:10,power:15,cost:1500000},
+        "Fusion Gun Bay":{tl:12,power:50,cost:8000000},
+        "Hullcutter Bay":{tl:18,power:60,cost:125000000},
+        "Ion Cannon Bay":{tl:12,power:20,cost:15000000},
+        "Mass Driver Bay":{tl:8,power:15,cost:40000000},
+        "Mass Driver Cannon":{tl:10,power:25,cost:50000000},
+        "Meson Gun Bay":{tl:11,power:20,cost:50000000},
+        "Minelayer":{tl:0,power:0,cost:1500000},
+        "Missile Bay":{tl:7,power:5,cost:12000000},
+        "Murian Pulse Laser Bay":{tl:12,power:30,cost:25000000},
+        "Neutron Laser Bay":{tl:16,power:40,cost:18000000},
+        "Orbital Strike Mass Driver Bay":{tl:10,power:35,cost:25000000},
+        "Orbital Strike Missile Bay":{tl:10,power:5,cost:16000000},
+        "Particle Beam Bay":{tl:11,power:30,cost:20000000},
+        "Plasma-Pulse Cannon":{tl:13,power:60,cost:15000000},
+        "Pulse Laser Bay":{tl:9,power:15,cost:3000000},
+        "Railgun Bay":{tl:10,power:10,cost:30000000},
+        "Repulsor Bay":{tl:15,power:50,cost:30000000},
+        "Tachyon Cannon":{tl:14,power:10,cost:15000000},
+        "Torpedo Bay":{tl:7,power:2,cost:3000000}
       }
     },
     bayTurretCost:{large:10000000,medium:5000000,small:2000000},  // HG p.39 — Bay turret costs
@@ -1481,11 +1503,28 @@ const DATA = {
       majorCitadel:{tons:40,cost:1500000}                       // Major Ceremonial Citadel
     },
     cargoNet:{costPerTon:10000},                               // HG p.58 — Cargo Net
-    cargoScoop:{cost:1000000}                                  // HG p.58 — Cargo Scoop
+    cargoScoop:{cost:1000000},                                // HG p.58 — Cargo Scoop
+    ramscoop:{tons:5,cost:2500000,notes:"Streamlined w/ Ramscoop"}, // HG p.49 — Ramscoop
+    collapsibleFuelTank:{costPerTon:5000,notes:"Requires Cargo Bay, No Piping to Jump Drive"}, // HG p.49
+    mountableFuelTank:{costPerTon:1000,notes:"Requires Cargo Bay, Direct Feed to Jump Drives"}, // HG p.49
+    fuelCargoContainer:{costPerTon:5000,notes:"Fuel/Cargo Container"}, // HG p.49
+    externalRetractableShelter:{tons:1,cost:100000},              // HG p.49 — External Retractable Shelter
+    gpMassDriver:{tons:10,cost:5000000},                       // HG p.49 — GP Mass Driver
+    escapePods:{tons:1,cost:500000,perPerson:1},               // HG p.57 — Escape Pods
+    assaultPods:{tons:1,cost:100000,perPerson:1},              // HG p.57 — Assault Pods
+    selfDestructSystem:{tons:1,cost:500000},                   // HG p.57 — Self Destruct System
+    interplanetaryHaulerNet:{costPerTon:10000,capacityPct:0.08}, // HG p.58 — Interplanetary Hauler Net (8% capacity)
+    jumpNet:{costPerTon:300000,capacityPct:0.10},             // HG p.58 — Jump Net (10% capacity)
+    armoredBulkhead:{costPerTon:200000,spacePct:0.10},        // HG p.58 — Armored Bulkhead (10% space, MCr0.2/t)
+    additionalAirlock:{costPerTon:100000,minTons:2},           // HG p.58 — Additional Airlock (min 2t, MCr0.1/t)
+    fullHangarBay:{tons:20,cost:20000000}                    // HG p.58 — Full Hangar Bay
   },
   bridgeOptions: {                                               // HG p.51-52
     holographic:{tl:9,costMult:.25},                             // +25% bridge cost, DM+2 initiative
-    detachable:{costMult:.50,tonsMult:.20}                       // +50% cost, +20% tons; min sizes p.51
+    detachable:{costMult:.50,tonsMult:.20},                      // +50% cost, +20% tons; min sizes p.51
+    auxiliaryControlRoom:{tons:4,cost:2000000},                 // HG p.51 — Auxilliary Control Room
+    moduleControlRoom:{tons:4,cost:2000000},                    // HG p.51 — Module Control Room
+    robotBrainInterface:{costPerTon:5000,minTons:1}             // HG p.51 — Robot Brain Interface (Cr5000/t, min 1t)
     // Command Bridge (p.19): ships >5,000 t — OUT OF SCOPE.
     // É-013 CLOSED (JS source 2026-06-13): "Hardened" in HG2022 Update = computer option /fib
     //   (Hardened Systems, in the COMPUTER section — easy to miss). No separate "Hardened Bridge"

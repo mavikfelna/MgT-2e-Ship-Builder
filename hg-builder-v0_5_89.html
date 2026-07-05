@@ -1303,6 +1303,45 @@ const DATA = {
       "Railgun Barbette":{tl:10,power:5,cost:2000000},
       "Torpedo Barbette":{tl:7,power:2,cost:3000000} },          // holds 3 torpedoes (p.31)
     barbetteTons:5,
+    bayTons:{large:500,medium:100,small:50},                   // HG p.39 — Bay tonnage
+    bayWeapons:{                                                // HG p.39 — Bay Weapons
+      large:{                                                   // Large Bays (500t)
+        "Antimatter Streamer":{tl:17,power:200,cost:70000000},
+        "Beam Laser Bay":{tl:10,power:100,cost:15000000},
+        "Citadel Mass Driver Cannon":{tl:9,power:100,cost:200000000},
+        "Fusion Gun Bay":{tl:12,power:100,cost:25000000},
+        "Hullcutter Bay":{tl:16,power:100,cost:110000000},
+        "Ion Cannon Bay":{tl:12,power:40,cost:40000000},
+        "Mass Driver Bay":{tl:8,power:35,cost:80000000},
+        "Mass Driver Cannon":{tl:10,power:75,cost:150000000},
+        "Meson Gun Bay":{tl:13,power:120,cost:250000000},
+        "Missile Bay":{tl:7,power:20,cost:25000000},
+        "Neutron Laser Bay":{tl:16,power:180,cost:100000000},
+        "Orbital Strike Mass Driver Bay":{tl:10,power:75,cost:50000000},
+        "Orbital Strike Missile Bay":{tl:10,power:25,cost:24000000},
+        "Particle Beam Bay":{tl:13,power:80,cost:60000000},
+        "Plasma-Pulse Cannon":{tl:13,power:400,cost:80000000},
+        "Pulse Laser Bay":{tl:9,power:100,cost:30000000},
+        "Railgun Bay":{tl:10,power:25,cost:70000000},
+        "Repulsor Bay":{tl:13,power:200,cost:90000000},
+        "Tachyon Cannon":{tl:14,power:25,cost:50000000},
+        "Torpedo Bay":{tl:7,power:10,cost:10000000}
+      },
+      medium:{                                                  // Medium Bays (100t)
+        "Antimatter Streamer":{tl:17,power:160,cost:55000000},
+        "Beam Laser Bay":{tl:10,power:23,cost:5000000},
+        "Erline Plasma Cannon":{tl:10,power:60,cost:50000000},
+        "Fusion Gun Bay":{tl:12,power:80,cost:14000000},
+        "Hullcutter Bay":{tl:17,power:80,cost:120000000},
+        "Ion Cannon Bay":{tl:12,power:30,cost:25000000},
+        "Mass Driver Bay":{tl:8,power:25,cost:60000000},
+        "Mass Driver Cannon":{tl:10,power:25,cost:15000000}
+      },
+      small:{                                                   // Small Bays (50t)
+        // Small bay weapons would go here
+      }
+    },
+    bayTurretCost:{large:10000000,medium:5000000,small:2000000},  // HG p.39 — Bay turret costs
     missilesPerTon:12,
     missileTypes:{                                               // HG p.36 — cost per 12 missiles
       "Standard":{tl:7,costPer12:250000},"Advanced":{tl:14,costPer12:350000},
@@ -1333,14 +1372,25 @@ const DATA = {
       "Railgun":{tl:10,tons:3500,power:500,cost:500000000,maxTonnage:21000},
       "Super Laser":{tl:16,tons:20000,power:6000,cost:25000000000},
       "Tachyon Cannon":{tl:14,tons:3500,power:5000,cost:750000000,maxTonnage:28000},
-      "HASWAT":{tl:11,tons:9000,power:1000,cost:10000000000} } },
+      "HASWAT":{tl:11,tons:9000,power:1000,cost:10000000000} },
+    pointDefense:{                                               // HG p.40 — Point Defense
+      "PD Laser Battery Type I":{tl:10,tons:20,cost:5000000},
+      "PD Laser Battery Type II":{tl:12,tons:20,cost:10000000},
+      "PD Laser Battery Type III":{tl:14,tons:20,cost:20000000},
+      "PD Gauss Battery Type I":{tl:10,tons:20,cost:3000000},
+      "PD Gauss Battery Type II":{tl:12,tons:20,cost:6000000},
+      "PD Gauss Battery Type III":{tl:14,tons:20,cost:10000000} } },
   screens: {                                                     // HG p.40-41 — Screens
     "Deflector Screens":{tl:10,tons:5,power:10,cost:5000000},
     "Energy Shields":{tl:14,tons:50,power:20,cost:25000000},
     "Improved Energy Shields":{tl:16,tons:75,power:15,cost:35000000},
     "Advanced Energy Shields":{tl:18,tons:100,power:10,cost:60000000},
     "Meson Screen":{tl:13,tons:30,power:10,cost:20000000},
-    "Nuclear Damper":{tl:12,tons:20,power:10,cost:10000000} },
+    "Nuclear Damper":{tl:12,tons:20,power:10,cost:10000000},
+    "Black Globe":{tl:15,tons:50,cost:100000000},                // HG p.41 — Globes
+    "White Globe":{tl:20,tons:50,cost:1000000000},
+    "Gravitic Shield, Primitive":{tl:16,tons:10,cost:25000000} // HG p.41 — Exotica
+  },
   accom: {                                                       // HG p.24, 50-51
     stateroom:{tons:4,cost:500000}, highStateroom:{tons:6,cost:800000},     // p.51 (DM+1 high pax)
     luxuryStateroom:{tons:10,cost:1500000},                                  // p.51 (DM+2 high pax)

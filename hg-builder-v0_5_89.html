@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HG Ship Builder — v0.5.89 alpha (Lot R4 : conformité fiche — audit JS)</title>
+<title>HG Ship Builder — v0.5.90 alpha (wiring of the July 2026 data additions)</title>
 <!--
   =====================================================================
   HIGH GUARD SHIP BUILDER — v0.5.70 alpha — VALIDATEUR PUISSANCE (clarif. JS, HG p.17 + oracle Hero A2 « jump dimming ») : le Power est un budget de systemes ACTIFS SIMULTANEMENT, pas leur somme ; le M-Drive n'est PAS requis pour sauter (on peut le couper). Deux planchers mutuellement exclusifs : vol = base+manoeuvre(+systemes), saut = base+saut. Seuil saut empirique -6 (marge en attendant une formule RAW ; seul le Hero A2 le sollicite, a +5). AFFICHAGE : la ligne POWER REQUIRED perd son chiffre-somme (faux besoin) -> badge JUMP DIMMING uniquement si necessaire (demande JS) ; bandeau + detail statut + panneau peda reformules sur les deux phases. VALIDATEUR (dans computeShip, remplace l'alerte ppRequired qui passait ROUGE tous les marchands lockes) : ROUGE seulement si base+manoeuvre non couvert OU saut sous -6 -> Hero/Beowulf/Marava/Type R passent du ROUGE faux-positif au VERT. SIZER ppRequired INCHANGE (defaut premium) -> centrales des 16 intactes, cout-neutre, harnais 15/15. md5 corps computeShip RE-BASELINE : ancien b75ff5b9 -> nouveau 89f4928c. node --check OK, boot jsdom OK. ALPHA : reste la validation print navigateur (JS). — voir v0.5.63 —
@@ -24,6 +24,22 @@
   runs a jump-time power deficit, É-014 note), Type R (p.189, 29/29;
   plant forced 9 t, same pattern).
   Changelog:
+    v0.5.90 alpha (2026-11-25) — WIRING of the July 2026 DATA additions (PR #1 + 8 « Vibe » commits), which
+      computeShip and the UI never used. computeShip CHANGED but ADDITIVE: all 17 PROFILES give identical cells,
+      alerts, notes, crew and fiche (jsdom diff v0.5.89 -> v0.5.90). (1) Bays (small/medium/large), point-defence
+      batteries, spinal mount: tonnage, cost, power, hardpoints (bays 1/1/5, PD 1), gunners (bays 1/2/4, PD 1),
+      TL gates. Spinal hardpoints/gunners NOT computed (rule unchecked, note shown). (2) Screens & globes.
+      (3) Optional sensor packages & arrays (cfg.sensorPkgs). (4) EXTRAS[] reducer (COMFORT pattern) for ~37
+      options: launch tubes, recovery deck, nets, ramscoop, fuel tanks, drones, external systems, facilities,
+      Droyne spaces, pods, self-destruct, control rooms, robot brain interface (cfg.extras). New cells:
+      pkg/bay/pd/spinal/scr/ex Tons+Cost, all in tonsUsed/costTotal; power in needSys. (5) DATA re-transcribed
+      from the reference Excel where the July values were wrong (bay table, screens tons/power swapped, sensor
+      packages, launch tube/recovery deck, ramscoop, cargo net/scoop, hauler net, gaming space, ceremonial
+      spaces, GP mass driver, tow cable, UNREP…). (6) Duplicates removed: crewArmoury/marineArmoury (= armoury),
+      options.vault (= divers.vault), additionalAirlock (= airlockExtra), fullHangarBay (= craft hangar mode),
+      sensorPackages.lifeScanner* (= options.lifeScanner D24), bayTurretCost (unsourced). (7) Unsourced values
+      kept but marked src:"?" (⚠ in the UI + a note). NO page reference of these additions has been checked
+      against the HG 2022 book yet. Gauge tooltip also picks up adjHullTons/flTons (missed since v0.5.63).
     v0.5.89 alpha (2026-07-03) — LOT R4 (display-only, computeShip INTOUCHÉ, md5 ef0f8493… inchangé).
       Conformité fiche suite à l'audit JS (5 captures oracle : Lab, Marava, Yacht, Corsair, Corvette) :
       (1) Purchase Cost à 4 décimales (le tronquage 3 déc. de R3a créait de faux écarts — valeurs moteur
@@ -985,7 +1001,7 @@
 <div class="wrap">
 <header class="app">
   <h1>HIGH GUARD SHIP BUILDER</h1>
-  <span class="verchip" id="verChip">v0.5.89 alpha</span>
+  <span class="verchip" id="verChip">v0.5.90 alpha</span>
   <div class="hdrtabs" id="hdrTabs"><button data-hp="hpVersion">Version</button><button data-hp="hpDroits">Auteur &amp; Droits</button><button data-hp="hpMerci">Remerciements</button></div>
   <span style="margin-left:12px;font-family:var(--mono);font-size:11px">Langue légende : <select id="uiLang"><option value="en">EN</option><option value="fr">FR (maison, provisoire)</option></select></span>
   <span style="margin-left:12px;font-family:var(--mono);font-size:11px"><label><input type="checkbox" id="pedaOn"> Mode pédagogique</label></span>
@@ -1035,6 +1051,8 @@
   <div class="row"><label>Software<span class="ref">CRB p.161 · É-010 verified</span></label></div>
   <div id="swList"></div>
   <div class="row"><label>Sensors<span class="ref">HG p.21</span></label><select id="inSensors"></select></div>
+  <div class="row" style="margin-top:.4em;font-weight:600;opacity:.75">Sensor packages &amp; arrays<span class="ref">v0.5.90 · Excel 7-Sensors · page refs unchecked</span></div>
+  <div id="pkgBox"></div>
 </section>
 
 <section class="panel">
@@ -1049,6 +1067,20 @@
     <select id="bWeapon"></select><button id="bAdd">+ barbette</button>
   </div>
   <div id="wList"></div>
+  <div class="row" style="margin-top:.4em;font-weight:600;opacity:.75">Bays, point defence &amp; spinal<span class="ref">v0.5.90 · Excel 8a-Weapons · page refs unchecked</span></div>
+  <div class="sub">
+    <select id="bySize"><option value="small">Small bay (50t, 1 hp)</option><option value="medium">Medium bay (100t, 1 hp)</option><option value="large">Large bay (500t, 5 hp)</option></select><select id="byWeapon"></select><button id="byAdd">+ bay</button>
+  </div>
+  <div class="sub">
+    <select id="pdType"></select><button id="pdAdd">+ PD battery</button>
+  </div>
+  <div class="row"><label>Spinal mount<span class="ref">hardpoints/gunners not computed</span></label><select id="inSpinal"></select></div>
+  <div id="hwList"></div>
+  <div class="row" style="margin-top:.4em;font-weight:600;opacity:.75">Screens &amp; globes<span class="ref">v0.5.90 · Excel 8b-Screens · page refs unchecked</span></div>
+  <div class="sub">
+    <select id="scrType"></select><button id="scrAdd">+ screen</button>
+  </div>
+  <div id="scrList"></div>
   <div class="row" style="margin-top:6px"><label>Missile ammo (tons)<span class="ref">12 msl/ton — HG p.36</span></label><input type="number" id="inAmmo" value="0" min="0"></div>
   <div class="row"><label>Missile type</label><select id="inMslType"></select></div>
   <div class="row"><label>Torpedo ammo (tons)<span class="ref">3 torp/ton — HG p.39</span></label><input type="number" id="inTorp" value="0" min="0"></div>
@@ -1137,6 +1169,8 @@
   <div class="row"><label>Briefing rooms (4t, MCr0.5)</label><input type="number" id="inBrief" value="0" min="0"></div>
   <div class="row"><label>Biosphere (tons, MCr0.2/t)<span class="ref">HG p.59 · feeds 2 pax/t</span></label><input type="number" id="inBio" value="0" min="0"></div>
   <div class="row"><label>Concealed comp. (t)<span class="ref">HG p.61 · ≤5% hull, Cr20k/t</span></label><input type="number" id="inHide" value="0" min="0"></div>
+  <div class="row" style="margin-top:.4em;font-weight:600;opacity:.75">More systems<span class="ref">v0.5.90 · ⚠ = rate not in reference Excel · page refs unchecked</span></div>
+  <div id="extrasBox"></div>
   <div class="row"><label>Maintenance: round down (É-019)<span class="ref">default = round up (Type S & R); check for Marava-style</span></label><input type="checkbox" id="inMaintFloor"></div>
 </section>
 
@@ -1305,65 +1339,84 @@ const DATA = {
       "Railgun Barbette":{tl:10,power:5,cost:2000000},
       "Torpedo Barbette":{tl:7,power:2,cost:3000000} },          // holds 3 torpedoes (p.31)
     barbetteTons:5,
-    bayTons:{large:500,medium:100,small:50},                   // HG p.39 — Bay tonnage
-    bayWeapons:{                                                // HG p.39 — Bay Weapons
-      large:{                                                   // Large Bays (500t)
-        "Antimatter Streamer":{tl:17,power:200,cost:70000000},
-        "Beam Laser Bay":{tl:10,power:100,cost:15000000},
-        "Citadel Mass Driver Cannon":{tl:9,power:100,cost:200000000},
-        "Fusion Gun Bay":{tl:12,power:100,cost:25000000},
-        "Hullcutter Bay":{tl:16,power:100,cost:110000000},
-        "Ion Cannon Bay":{tl:12,power:40,cost:40000000},
-        "Mass Driver Bay":{tl:8,power:35,cost:80000000},
-        "Mass Driver Cannon":{tl:10,power:75,cost:150000000},
-        "Meson Gun Bay":{tl:13,power:120,cost:250000000},
-        "Missile Bay":{tl:7,power:20,cost:25000000},
-        "Neutron Laser Bay":{tl:16,power:180,cost:100000000},
-        "Orbital Strike Mass Driver Bay":{tl:10,power:75,cost:50000000},
-        "Orbital Strike Missile Bay":{tl:10,power:25,cost:24000000},
-        "Particle Beam Bay":{tl:13,power:80,cost:60000000},
-        "Plasma-Pulse Cannon":{tl:13,power:400,cost:80000000},
-        "Pulse Laser Bay":{tl:9,power:100,cost:30000000},
-        "Railgun Bay":{tl:10,power:25,cost:70000000},
-        "Repulsor Bay":{tl:13,power:200,cost:90000000},
-        "Tachyon Cannon":{tl:14,power:25,cost:50000000},
-        "Torpedo Bay":{tl:7,power:10,cost:10000000}
+    // v0.5.90 — BAYS. Weapon stats re-transcribed from the reference Excel (8a-Weapons, bay table) —
+    //   the July 2026 entries had swapped/copied values (e.g. medium Mass Driver, small Antimatter).
+    //   src:"?" = not in the Excel, source unknown (kept, flagged). Book page refs NOT yet checked.
+    //   hp / gunners per bay = Excel mount table (small 1/1, medium 1/2, large 5/4) — UNCHECKED vs HG.
+    baySizes:{ small:{tons:50,hp:1,gunners:1}, medium:{tons:100,hp:1,gunners:2}, large:{tons:500,hp:5,gunners:4} },
+    bayWeapons:{
+      small:{
+        "Advanced Repulsor Bay":{tl:16,power:50,cost:30000000,dmg:"Special"},
+        "Antimatter Streamer Bay":{tl:17,power:120,cost:40000000,dmg:"4D x 5"},
+        "Beam Laser Bay":{tl:10,power:15,cost:1500000,dmg:"2D x 10*"},
+        "Fusion Gun Bay":{tl:12,power:50,cost:8000000,dmg:"6D x10*"},
+        "Hullcutter Bay":{tl:18,power:60,cost:125000000,dmg:"12D"},
+        "Ion Cannon Bay":{tl:12,power:20,cost:15000000,dmg:"6D x 10"},
+        "Mass Driver Bay":{tl:8,power:15,cost:40000000,dmg:"3D x 10*"},
+        "Meson Gun Bay":{tl:11,power:20,cost:50000000,dmg:"5D x 10*"},
+        "Missile Bay":{tl:7,power:5,cost:12000000,dmg:"4D"},
+        "Neutron Laser Bay":{tl:16,power:40,cost:18000000,dmg:"7D"},
+        "Orbital Strike Mass Driver Bay":{tl:10,power:35,cost:25000000,dmg:"7D x 10*"},
+        "Orbital Strike Missile Bay":{tl:10,power:5,cost:16000000,dmg:"3D x 10*"},
+        "Particle Beam Bay":{tl:11,power:30,cost:20000000,dmg:"6D x 10*"},
+        "Plasma-Pulse Cannon Bay":{tl:13,power:60,cost:15000000,dmg:"6D x 10*"},
+        "Pulse Laser Bay":{tl:9,power:15,cost:3000000,dmg:"4D x 10*"},
+        "Railgun Bay":{tl:10,power:10,cost:30000000,dmg:"3D x 10*"},
+        "Repulsor Bay":{tl:15,power:50,cost:30000000,dmg:"Special"},
+        "Tachyon Cannon Bay":{tl:14,power:10,cost:15000000,dmg:"4D x 10*"},
+        "Torpedo Bay":{tl:9,power:2,cost:3000000,dmg:"6D"},
+        "Mass Driver Cannon":{tl:10,power:25,cost:50000000,src:"?"},
+        "Minelayer":{tl:0,power:0,cost:1500000,src:"?"},
+        "Murian Pulse Laser Bay":{tl:12,power:30,cost:25000000,src:"?"}
       },
-      medium:{                                                  // Medium Bays (100t)
-        "Antimatter Streamer":{tl:17,power:160,cost:55000000},
-        "Beam Laser Bay":{tl:10,power:23,cost:5000000},
-        "Erline Plasma Cannon":{tl:10,power:60,cost:50000000},
-        "Fusion Gun Bay":{tl:12,power:80,cost:14000000},
-        "Hullcutter Bay":{tl:17,power:80,cost:120000000},
-        "Ion Cannon Bay":{tl:12,power:30,cost:25000000},
-        "Mass Driver Bay":{tl:8,power:25,cost:60000000},
-        "Mass Driver Cannon":{tl:10,power:25,cost:15000000}
+      medium:{
+        "Advanced Repulsor Bay":{tl:15,power:100,cost:66000000,dmg:"Special"},
+        "Antimatter Streamer Bay":{tl:17,power:160,cost:55000000,dmg:"6D x 5"},
+        "Beam Laser Bay":{tl:10,power:23,cost:5000000,dmg:"3D x 20*"},
+        "Fusion Gun Bay":{tl:12,power:80,cost:14000000,dmg:"7D x 20*"},
+        "Hullcutter Bay":{tl:17,power:80,cost:120000000,dmg:"12D"},
+        "Ion Cannon Bay":{tl:12,power:30,cost:25000000,dmg:"8D x 20"},
+        "Mass Driver Bay":{tl:8,power:25,cost:60000000,dmg:"4D x 20*"},
+        "Meson Gun Bay":{tl:12,power:30,cost:60000000,dmg:"6D x 20*"},
+        "Missile Bay":{tl:7,power:10,cost:20000000,dmg:"4D"},
+        "Neutron Laser Bay":{tl:16,power:60,cost:35000000,dmg:"9D"},
+        "Orbital Strike Mass Driver Bay":{tl:10,power:50,cost:35000000,dmg:"10D x 20*"},
+        "Orbital Strike Missile Bay":{tl:10,power:15,cost:20000000,dmg:"5D x 20*"},
+        "Particle Beam Bay":{tl:12,power:50,cost:40000000,dmg:"8D x 20*"},
+        "Plasma-Pulse Cannon Bay":{tl:13,power:90,cost:30000000,dmg:"8D x 20*"},
+        "Pulse Laser Bay":{tl:9,power:23,cost:10000000,dmg:"6D x 20*"},
+        "Railgun Bay":{tl:10,power:15,cost:50000000,dmg:"5D x 20*"},
+        "Repulsor Bay":{tl:14,power:100,cost:60000000,dmg:"Special"},
+        "Tachyon Cannon Bay":{tl:14,power:15,cost:30000000,dmg:"6D x 20*"},
+        "Torpedo Bay":{tl:9,power:5,cost:6000000,dmg:"6D"},
+        "Erline Plasma Cannon":{tl:10,power:60,cost:50000000,src:"?"},
+        "Mass Driver Cannon":{tl:10,power:25,cost:15000000,src:"?"}
       },
-      small:{                                                   // Small Bays (50t)
-        "Antimatter Streamer":{tl:17,power:160,cost:55000000},
-        "Beam Laser Bay":{tl:10,power:15,cost:1500000},
-        "Fusion Gun Bay":{tl:12,power:50,cost:8000000},
-        "Hullcutter Bay":{tl:18,power:60,cost:125000000},
-        "Ion Cannon Bay":{tl:12,power:20,cost:15000000},
-        "Mass Driver Bay":{tl:8,power:15,cost:40000000},
-        "Mass Driver Cannon":{tl:10,power:25,cost:50000000},
-        "Meson Gun Bay":{tl:11,power:20,cost:50000000},
-        "Minelayer":{tl:0,power:0,cost:1500000},
-        "Missile Bay":{tl:7,power:5,cost:12000000},
-        "Murian Pulse Laser Bay":{tl:12,power:30,cost:25000000},
-        "Neutron Laser Bay":{tl:16,power:40,cost:18000000},
-        "Orbital Strike Mass Driver Bay":{tl:10,power:35,cost:25000000},
-        "Orbital Strike Missile Bay":{tl:10,power:5,cost:16000000},
-        "Particle Beam Bay":{tl:11,power:30,cost:20000000},
-        "Plasma-Pulse Cannon":{tl:13,power:60,cost:15000000},
-        "Pulse Laser Bay":{tl:9,power:15,cost:3000000},
-        "Railgun Bay":{tl:10,power:10,cost:30000000},
-        "Repulsor Bay":{tl:15,power:50,cost:30000000},
-        "Tachyon Cannon":{tl:14,power:10,cost:15000000},
-        "Torpedo Bay":{tl:7,power:2,cost:3000000}
+      large:{
+        "Advanced Repulsor Bay":{tl:14,power:200,cost:90000000,dmg:"Special"},
+        "Antimatter Streamer Bay":{tl:17,power:200,cost:70000000,dmg:"8D x 5"},
+        "Beam Laser Bay":{tl:10,power:100,cost:15000000,dmg:"3D x 100*"},
+        "Fusion Gun Bay":{tl:12,power:100,cost:25000000,dmg:"10D x 100*"},
+        "Hullcutter Bay":{tl:16,power:100,cost:110000000,dmg:"12D"},
+        "Ion Cannon Bay":{tl:12,power:40,cost:40000000,dmg:"10D x 100"},
+        "Mass Driver Bay":{tl:8,power:35,cost:80000000,dmg:"6D x 100*"},
+        "Meson Gun Bay":{tl:13,power:150,cost:250000000,dmg:"6D x 100*"},
+        "Missile Bay":{tl:7,power:50,cost:25000000,dmg:"4D"},
+        "Neutron Laser Bay":{tl:16,power:180,cost:100000000,dmg:"9D"},
+        "Orbital Strike Mass Driver Bay":{tl:10,power:75,cost:50000000,dmg:"12D x 100*"},
+        "Orbital Strike Missile Bay":{tl:10,power:25,cost:24000000,dmg:"8D x 100*"},
+        "Particle Beam Bay":{tl:13,power:80,cost:60000000,dmg:"10D x 100*"},
+        "Plasma-Pulse Cannon Bay":{tl:13,power:400,cost:80000000,dmg:"10D x 100*"},
+        "Pulse Laser Bay":{tl:9,power:100,cost:30000000,dmg:"6D x 100*"},
+        "Railgun Bay":{tl:10,power:25,cost:70000000,dmg:"6D x 100*"},
+        "Repulsor Bay":{tl:13,power:200,cost:90000000,dmg:"Special"},
+        "Tachyon Cannon Bay":{tl:14,power:25,cost:50000000,dmg:"7D x 100*"},
+        "Torpedo Bay":{tl:9,power:25,cost:10000000,dmg:"6D"},
+        "Citadel Mass Driver Cannon":{tl:9,power:100,cost:200000000,src:"?"},
+        "Mass Driver Cannon":{tl:10,power:75,cost:150000000,src:"?"}
       }
+
     },
-    bayTurretCost:{large:10000000,medium:5000000,small:2000000},  // HG p.39 — Bay turret costs
     missilesPerTon:12,
     missileTypes:{                                               // HG p.36 — cost per 12 missiles
       "Standard":{tl:7,costPer12:250000},"Advanced":{tl:14,costPer12:350000},
@@ -1382,36 +1435,40 @@ const DATA = {
       "Ortillery":{tl:8,cost:1000000},"Plasma":{tl:12,cost:650000},
       "Antimatter":{tl:20,cost:900000},"Antimatter Bomb-Pumped":{tl:21,cost:800000},
       "Multi-Warhead Antimatter":{tl:21,cost:2000000} },
-    spinalMounts:{                                               // HG p.39 — Spinal Weapons
-      "Antimatter":{tl:21,tons:12000,power:2500,cost:5000000000,maxTonnage:200000},
-      "Basic Disintegrator":{tl:20,tons:5000,power:2500,cost:110000000,maxTonnage:100000},
-      "Improved Disintegrator":{tl:22,tons:5000,power:3000,cost:200000000,maxTonnage:150000},
+    spinalMounts:{                                               // v0.5.90 — Excel 8a-Weapons spinal table (maxSize = Excel « Max Size », display only). Page ref UNCHECKED.
+      "Antimatter Cannon":{tl:21,tons:12000,power:2500,cost:5000000000,maxSize:200000},
+      "Disintegrator":{tl:20,tons:5000,power:2500,cost:110000000,maxSize:100000},
+      "Improved Disintegrator":{tl:22,tons:5000,power:3000,cost:200000000,maxSize:150000},
       "Advanced Disintegrator":{tl:24,tons:4000,power:4000,cost:300000000},
-      "Mass Driver":{tl:10,tons:5000,power:250,cost:1500000000,maxTonnage:100000},
-      "Meson":{tl:12,tons:7500,power:1000,cost:2000000000,maxTonnage:75000},
-      "Neutron Laser":{tl:16,tons:20000,power:6000,cost:25000000000},
-      "Particle":{tl:11,tons:3500,power:1000,cost:1000000000,maxTonnage:28000},
-      "Railgun":{tl:10,tons:3500,power:500,cost:500000000,maxTonnage:21000},
+      "Meson Cannon":{tl:12,tons:7500,power:1000,cost:2000000000,maxSize:75000},
+      "Particle Cannon":{tl:11,tons:3500,power:1000,cost:1000000000,maxSize:28000},
+      "Railgun":{tl:10,tons:3500,power:500,cost:500000000,maxSize:21000},
       "Super Laser":{tl:16,tons:20000,power:6000,cost:25000000000},
-      "Tachyon Cannon":{tl:14,tons:3500,power:5000,cost:750000000,maxTonnage:28000},
-      "HASWAT":{tl:11,tons:9000,power:1000,cost:10000000000} },
-    pointDefense:{                                               // HG p.40 — Point Defense
-      "PD Laser Battery Type I":{tl:10,tons:20,cost:5000000},
-      "PD Laser Battery Type II":{tl:12,tons:20,cost:10000000},
-      "PD Laser Battery Type III":{tl:14,tons:20,cost:20000000},
-      "PD Gauss Battery Type I":{tl:10,tons:20,cost:3000000},
-      "PD Gauss Battery Type II":{tl:12,tons:20,cost:6000000},
-      "PD Gauss Battery Type III":{tl:14,tons:20,cost:10000000} } },
-  screens: {                                                     // HG p.40-41 — Screens
+      // not in the Excel — source unknown (July 2026 « Google Sheet »), kept but flagged:
+      "Mass Driver":{tl:10,tons:5000,power:250,cost:1500000000,src:"?"},
+      "Neutron Laser":{tl:16,tons:20000,power:6000,cost:25000000000,src:"?"},
+      "Tachyon Cannon":{tl:14,tons:3500,power:5000,cost:750000000,src:"?"},
+      "HASWAT":{tl:11,tons:9000,power:1000,cost:10000000000,src:"?"} },
+    pointDefense:{                                               // v0.5.90 — power/hp/gunner from Excel 8a-Weapons (20 t, 1 hardpoint, 1 gunner each). Page ref UNCHECKED.
+      "PD Laser Battery Type I":{tl:10,tons:20,power:10,cost:5000000},
+      "PD Laser Battery Type II":{tl:12,tons:20,power:20,cost:10000000},
+      "PD Laser Battery Type III":{tl:14,tons:20,power:30,cost:20000000},
+      "PD Gauss Battery Type I":{tl:10,tons:20,power:5,cost:3000000},
+      "PD Gauss Battery Type II":{tl:12,tons:20,power:15,cost:6000000},
+      "PD Gauss Battery Type III":{tl:14,tons:20,power:25,cost:10000000} },
+    pdHp:1, pdGunners:1 },
+  screens: {                                                     // v0.5.90 — re-checked vs Excel 8b-Screens (tons/power were SWAPPED on 5 of 6 screens). Page refs UNCHECKED.
     "Deflector Screens":{tl:10,tons:5,power:10,cost:5000000},
-    "Energy Shields":{tl:14,tons:50,power:20,cost:25000000},
-    "Improved Energy Shields":{tl:16,tons:75,power:15,cost:35000000},
-    "Advanced Energy Shields":{tl:18,tons:100,power:10,cost:60000000},
-    "Meson Screen":{tl:13,tons:30,power:10,cost:20000000},
-    "Nuclear Damper":{tl:12,tons:20,power:10,cost:10000000},
-    "Black Globe":{tl:15,tons:50,cost:100000000},                // HG p.41 — Globes
-    "White Globe":{tl:20,tons:50,cost:1000000000},
-    "Gravitic Shield, Primitive":{tl:16,tons:10,cost:25000000} // HG p.41 — Exotica
+    "Energy Shields":{tl:14,tons:20,power:50,cost:25000000},
+    "Improved Energy Shields":{tl:16,tons:15,power:75,cost:35000000},
+    "Advanced Energy Shields":{tl:18,tons:10,power:100,cost:60000000},
+    "Meson Screen":{tl:13,tons:10,power:30,cost:20000000},
+    "Nuclear Damper":{tl:12,tons:10,power:20,cost:10000000},
+    "Black Globe":{tl:15,tons:50,power:30,cost:100000000},
+    "White Globe":{tl:20,tons:50,power:100,cost:1000000000},
+    "Grav Screen":{tl:12,tons:1,power:2,cost:1000000}            // Excel 8b-Screens « Grav » row
+    // Gravitic shielding (Excel: Primitive TL16 MCr2.5 … Superb TL21 MCr25) is a hull-wide add-on whose
+    //   cost basis isn't clear from the sheet — NOT encoded (was « Gravitic Shield, Primitive » 10t/MCr25, unsourced).
   },
   accom: {                                                       // HG p.24, 50-51
     stateroom:{tons:4,cost:500000}, highStateroom:{tons:6,cost:800000},     // p.51 (DM+1 high pax)
@@ -1442,30 +1499,31 @@ const DATA = {
       IV:{tons:20,cost:4000000,maxAtt:2000,label:"Type IV"},
       V:{tons:50,cost:8000000,maxAtt:Infinity,label:"Type V"} } },
     sensorStation:{tons:1,cost:500000},                            // HG p.52 — poste de capteurs : 1 t / MCr0,5, 0 énergie ; 1 tâche capteur de plus/round ; éligibilité ≤7500t (D23, RAW)
-    sensorPackages:{                                               // HG p.52-54 — Optional Sensor Packages
-      emProtectionSuite:{tl:11,tons:6,power:3,cost:3000000,notes:"Countermeasures Suite"}, // Aliens of Charted Space Vol 1 p.156
-      countermeasuresSuite:{tl:13,tons:2,power:1,cost:4000000},      // HG p.54 — Military Countermeasures Suite
-      militaryCountermeasuresSuite:{tl:15,tons:0,power:15,cost:28000000,notes:"DM+6 to Jam/EW"}, // HG p.54
-      advancedCountermeasuresSuite:{tl:16,tons:0,power:20,cost:40000000,notes:"DM+8 to Jam/EW"}, // HG p.54
-      deepPenetrationScanners:{tl:13,tons:1,power:0,cost:1000000,notes:"Scan 20 T/Hr"}, // HG p.54 — Deep Penetration Scanners
-      enhancedSignalProcessing:{tl:13,tons:0,power:0,cost:8000000,notes:"DM+4 to all Sensors"}, // HG p.54
-      improvedSignalProcessing:{tl:11,tons:0,power:0,cost:4000000,notes:"DM+2 to all Sensors"}, // HG p.54
-      lifeScanner:{tl:12,tons:1,power:1,cost:2000000,notes:"Generic Life Signs"}, // HG p.54
-      lifeScannerAnalysisSuite:{tl:14,tons:1,power:1,cost:4000000,notes:"Detailed Life Signs"}, // HG p.54
-      mineralDetectionSuite:{tl:12,tons:0,power:0,cost:5000000,notes:"Mineral Type/QTY"} // HG p.54
+    sensorPackages:{   // v0.5.90 — rebuilt from Excel 7-Sensors formulas. basis: unit = per item ; perTon = qty is tons ;
+                       //   arrayX = multiple of the MAIN sensor (tons/cost/power) ; pctHull = tons = ceil(1% hull).
+                       //   Life Scanner / Analysis Suite REMOVED here (duplicates of options.lifeScanner, D24). Page refs UNCHECKED.
+      countermeasuresSuite:{label:"Countermeasures Suite",basis:"unit",tl:13,tons:2,power:1,cost:4000000,notes:"DM+4 Jam/EW"},
+      militaryCountermeasuresSuite:{label:"Military Countermeasures Suite",basis:"unit",tl:15,tons:15,power:2,cost:28000000,notes:"DM+6 Jam/EW"},
+      advancedCountermeasuresSuite:{label:"Advanced Countermeasures Suite",basis:"unit",tl:16,tons:20,power:5,cost:40000000,notes:"DM+8 Jam/EW"},
+      emProtectionSuite:{label:"EM Protection Suite",basis:"unit",tl:11,tons:6,power:3,cost:3000000,src:"?",notes:"cited as Aliens of Charted Space Vol 1 p.156 — unchecked"},
+      deepPenetrationScanners:{label:"Deep Penetration Scanners (t)",basis:"perTon",tl:13,costPerTon:1000000,powerFlat:1,notes:"scan 20 t/hr per ton"},
+      shallowPenetrationSuite:{label:"Shallow Penetration Suite",basis:"unit",tl:10,tons:10,power:1,cost:5000000,notes:"Heat/EM @ VLong"},
+      improvedSignalProcessing:{label:"Improved Signal Processing",basis:"unit",tl:11,tons:1,power:1,cost:4000000,notes:"DM+2 all sensors"},
+      enhancedSignalProcessing:{label:"Enhanced Signal Processing",basis:"unit",tl:13,tons:2,power:2,cost:8000000,notes:"DM+4 all sensors"},
+      mineralDetectionSuite:{label:"Mineral Detection Suite",basis:"unit",tl:12,tons:1,power:0,cost:5000000,notes:"mineral type/qty"},
+      mailDistributionArray:{label:"Mail Distribution Array",basis:"unit",tl:10,tons:10,power:0,cost:20000000,notes:"X-boat comms"},
+      mailDistributionArrayAdv:{label:"Mail Distribution Array (Adv)",basis:"unit",tl:13,tons:20,power:0,cost:10000000,notes:"X-boat comms"},
+      distributedArrays:{label:"Distributed Arrays",basis:"arrayX",tl:11,tonsX:2,costX:2,powerX:1,notes:"extend range"},
+      extendedArrays:{label:"Extended Arrays",basis:"arrayX",tl:11,tonsX:2,costX:2,powerX:2,notes:"extend range"},
+      rapidDeploymentExtendedArrays:{label:"Rapid Deployment Extended Arrays",basis:"arrayX",tl:11,tonsX:2,costX:4,powerX:2,notes:"extend range; usable under thrust/jump"},
+      extensionNet:{label:"Extension Net",basis:"pctHull",tl:10,pct:0.01,costPerTon:1000000,power:0,notes:"probe drone array"}
     },
     scoopsCost:1000000, medbay:{tons:4,cost:2000000,power:1},
     lab:{tons:4,cost:1000000}, library:{tl:8,tons:4,cost:4000000},
     concealed:{costPerTon:20000,maxPctHull:.05},
-    armoury:{tons:1,cost:250000,per:"25 crew or 5 marines"},     // p.59
+    armoury:{tons:1,cost:250000,per:"25 crew or 5 marines"},     // p.59 — v0.5.90: crewArmoury/marineArmoury (dupes) removed; same 1t/MCr0.25, use this one
     probeDrones:{per:10,tons:2,cost:1000000,tl:9,costAdv:1600000,tlAdv:12}, // HG p.62 — std TL9 MCr0,5/t ; advanced TL12 MCr0,8/t (5 sondes/t)
-    miningDrones:{per:10,tons:2,cost:100000,tl:8,capacityPer10:10},      // HG p.62 — TL8 MCr0.1/t, 10 tons/day per 10 drones
-    repairDrones:{per:10,tons:2,cost:200000,tl:8,capacityPct:0.01},     // HG p.62 — TL8 MCr0.2/t, 1% of hull per 10 drones
-    breachingTube:{tons:3,cost:3000000,tl:8,notes:"DM+1 to Boarding"},   // HG p.62 — External Systems
-    grapplingArm:{tons:2,cost:1000000,tl:8,notes:"Move 2× tons"},        // HG p.62 — External Systems
-    heavyGrapplingArm:{tons:6,cost:3000000,tl:8,notes:"Move 10× tons"}, // HG p.62 — External Systems
-    towCable:{tons:0.01,cost:5000,tl:8,notes:"1% of Hull"},            // HG p.62 — External Systems
-    unrepSystem:{tons:1,cost:500000,tl:8,notes:"Transfer 20× tons/hour"}, // HG p.62 — External Systems
+    // v0.5.90: mining/repair drones, breaching tube, grappling arms, tow cable, UNREP -> EXTRAS[] (single source)
     lifeScanner:{base:{tl:12,tons:1,cost:2000000,power:1},suite:{tl:14,tons:1,cost:4000000,power:1}}, // HG p.52 — Life Scanner / Analysis Suite (D24)
     comfort:{ // HG p.56-58 — Confort & Common Areas (D25), additifs défaut 0
       radiation:{tl:7,costPerHullTon:25000},      // 0 t ; Cr25k / t de COQUE
@@ -1495,53 +1553,12 @@ const DATA = {
     workshop:{tons:6,cost:900000},                               // profil p.160; règle à confirmer
     briefing:{tons:4,cost:500000},                               // p.59 (DM+1 Tactics)
     biosphere:{costPerTon:200000,power:1},                     // p.59 — eliminates life support for 2 pax/ton
-    crewArmoury:{tons:1,cost:250000,capacity:25},               // HG p.59 — 1t per 25 crew
-    marineArmoury:{tons:1,cost:250000,capacity:5},              // HG p.59 — 1t per 5 marines
-    baseSupport:{tons:12,cost:4000000,tl:10},                   // HG p.59 — Base Support Facility
-    constructionDeck:{tons:0,costPerTon:500000},                // HG p.59 — Construction Deck
-    gamingSpace:{tons:1.5,cost:6000},                            // HG p.59 — Gaming Space
-    shrineToHeroes:{tons:4,cost:500000},                       // HG p.59 — Shrine to Heroes
-    vault:{costPerTon:500000,minTons:4,maxTons:40},            // HG p.60 — Vault (4-40t, MCr0.5/t)
-    ceremonialSpace:{                                           // Droyne Ceremonial Chambers
-      minor:{tons:6,cost:250000},                              // Minor Ceremonial Space
-      major:{tons:20,cost:1000000},                             // Major Ceremonial Space
-      minorCitadel:{tons:12,cost:750000},                       // Minor Ceremonial Citadel
-      majorCitadel:{tons:40,cost:1500000}                       // Major Ceremonial Citadel
-    },
-    cargoNet:{costPerTon:10000},                               // HG p.58 — Cargo Net
-    cargoScoop:{cost:1000000},                                // HG p.58 — Cargo Scoop
-    ramscoop:{tons:5,cost:2500000,notes:"Streamlined w/ Ramscoop"}, // HG p.49 — Ramscoop
-    collapsibleFuelTank:{costPerTon:5000,notes:"Requires Cargo Bay, No Piping to Jump Drive"}, // HG p.49
-    mountableFuelTank:{costPerTon:1000,notes:"Requires Cargo Bay, Direct Feed to Jump Drives"}, // HG p.49
-    fuelCargoContainer:{costPerTon:5000,notes:"Fuel/Cargo Container"}, // HG p.49
-    externalRetractableShelter:{tons:1,cost:100000},              // HG p.49 — External Retractable Shelter
-    gpMassDriver:{tons:10,cost:5000000},                       // HG p.49 — GP Mass Driver
-    escapePods:{tons:1,cost:500000,perPerson:1},               // HG p.57 — Escape Pods
-    assaultPods:{tons:1,cost:100000,perPerson:1},              // HG p.57 — Assault Pods
-    selfDestructSystem:{tons:1,cost:500000},                   // HG p.57 — Self Destruct System
-    interplanetaryHaulerNet:{costPerTon:10000,capacityPct:0.08}, // HG p.58 — Interplanetary Hauler Net (8% capacity)
-    jumpNet:{costPerTon:300000,capacityPct:0.10},             // HG p.58 — Jump Net (10% capacity)
-    armoredBulkhead:{costPerTon:200000,spacePct:0.10},        // HG p.58 — Armored Bulkhead (10% space, MCr0.2/t)
-    additionalAirlock:{costPerTon:100000,minTons:2},           // HG p.58 — Additional Airlock (min 2t, MCr0.1/t)
-    fullHangarBay:{tons:20,cost:20000000},                    // HG p.58 — Full Hangar Bay
-    launchTubes:{tons:5,cost:5000000,perTube:1},              // HG p.58 — Launch Tubes
-    recoveryDeck:{tons:10,cost:10000000},                     // HG p.58 — Recovery Deck
-    heatManagementSystem:{tons:2,cost:2000000,power:1},      // HG p.57 — Heat Management System
-    securitySystem:{tons:1,cost:1000000},                     // HG p.57 — Security System
-    roboticsFacility:{tons:5,cost:5000000},                   // HG p.57 — Robotics Facility
-    mailDistributionArray:{tons:10,cost:20000000,tl:10},      // HG p.54 — Mail Distribution Array (XBoat Comms)
-    mailDistributionArrayAdv:{tons:10,cost:10000000,tl:13},  // HG p.54 — Mail Distribution Array ADV
-    distributedArrays:{tons:0,costPerTon:0,notes:"Extend Range"}, // HG p.54 — Distributed Arrays
-    extendedArrays:{tons:0,costPerTon:0,notes:"Extend Range"}, // HG p.54 — Extended Arrays
-    rapidDeploymentExtendedArrays:{tons:0,costPerTon:0,notes:"Extends Range; Allows Thrust/Jump"}, // HG p.54
-    extensionNet:{tons:0,costPerTon:0,notes:"Probe Drone Array"} // HG p.54 — Extension Net
+    // v0.5.90: base support … robotics, nets, fuel tanks, pods -> EXTRAS[] (single source) ; arrays & mail arrays -> sensorPackages
   },
   bridgeOptions: {                                               // HG p.51-52
     holographic:{tl:9,costMult:.25},                             // +25% bridge cost, DM+2 initiative
     detachable:{costMult:.50,tonsMult:.20},                      // +50% cost, +20% tons; min sizes p.51
-    auxiliaryControlRoom:{tons:4,cost:2000000},                 // HG p.51 — Auxilliary Control Room
-    moduleControlRoom:{tons:4,cost:2000000},                    // HG p.51 — Module Control Room
-    robotBrainInterface:{costPerTon:5000,minTons:1}             // HG p.51 — Robot Brain Interface (Cr5000/t, min 1t)
+    // v0.5.90: auxiliary/module control rooms, robot brain interface -> EXTRAS[]
     // Command Bridge (p.19): ships >5,000 t — OUT OF SCOPE.
     // É-013 CLOSED (JS source 2026-06-13): "Hardened" in HG2022 Update = computer option /fib
     //   (Hardened Systems, in the COMPUTER section — easy to miss). No separate "Hardened Bridge"
@@ -1588,6 +1605,62 @@ const COMFORT = [
   {field:"zerog",     en:"Zero-G recreation",     fr:"Salle zéro-G",            basis:"flat",       rate:50000,               cellCost:"zerogCost"},
   {field:"studio",    en:"Studio",                fr:"Studios",                 basis:"perTon",     rate:100000, cellTons:"studioTons",  cellCost:"studioCost"},
   {field:"training",  en:"Training facility",     fr:"Salle d'entraînement",    basis:"perTon",     rate:200000, cellTons:"trainTons",   cellCost:"trainCost"},
+];
+
+/* ===== v0.5.90 — EXTRAS : options added to DATA in July 2026 (PR #1 + 8 « Vibe » commits) but never wired.
+   Same pattern as COMFORT (one object = one line item, single source of the rates). Values were
+   re-checked against the reference Excel (« Ship Designer Blank v2026.01.22a.xlsx ») where it has them:
+     src:"xlsx" = rate read from the Excel formulas ; src:"?" = not found in the Excel, kept from the July
+     data, UNVERIFIED. NO page reference below has been checked against the HG 2022 book yet (ref = cited only).
+   basis : count (n units) · perTon (n = tons) · flag (checkbox) · hullPct (checkbox, tons = % hull)
+           hullCost (checkbox, cost per HULL ton, 0 t) · capPct (n = capacity/protected tons, tons = pct × n)
+           craftX (n = tonnage of the craft served, tons = mult × n). inCargo = tons live in the cargo hold (0 t counted). ===== */
+const EXTRAS = [
+  // —— Command ——
+  {field:"auxControl",   grp:"Command",   en:"Auxiliary control room",        basis:"count", tons:4, cost:2000000, src:"?", ref:"HG p.51"},
+  {field:"moduleControl",grp:"Command",   en:"Module control room",           basis:"count", tons:4, cost:2000000, src:"?", ref:"HG p.51"},
+  {field:"robotBrain",   grp:"Command",   en:"Robot brain interface",         basis:"hullCost", costPerHullTon:5000, src:"xlsx", ref:"HG p.51"},
+  // —— Craft handling ——
+  {field:"launchTube",   grp:"Craft",     en:"Launch tube (craft t)",         basis:"craftX", mult:10, costPerTon:500000, powerPerTon:1, src:"xlsx", ref:"HG p.58", unit:"t of craft"},
+  {field:"recoveryDeck", grp:"Craft",     en:"Recovery deck (craft t)",       basis:"craftX", mult:10, costPerTon:500000, powerPerTon:1, src:"xlsx", ref:"HG p.58", unit:"t of craft"},
+  // —— External systems ——
+  {field:"breachingTube",grp:"External",  en:"Breaching tube",                basis:"count", tons:3, cost:3000000, tl:8, src:"xlsx", ref:"HG p.62"},
+  {field:"grapplingArm", grp:"External",  en:"Grappling arm",                 basis:"count", tons:2, cost:1000000, tl:8, src:"xlsx", ref:"HG p.62"},
+  {field:"heavyGrapple", grp:"External",  en:"Heavy grappling arm",           basis:"count", tons:6, cost:3000000, tl:8, src:"xlsx", ref:"HG p.62"},
+  {field:"towCable",     grp:"External",  en:"Tow cable (1% hull)",           basis:"hullPct", pct:0.01, costPerTon:5000, tl:8, src:"xlsx", ref:"HG p.62"},
+  {field:"unrep",        grp:"External",  en:"UNREP system (t)",              basis:"perTon", costPerTon:500000, powerPerTon:1, tl:8, src:"xlsx", ref:"HG p.62"},
+  {field:"gpMassDriver", grp:"External",  en:"GP mass driver (t)",            basis:"perTon", costPerTon:75000, powerPerTon:3, src:"xlsx", ref:"HG p.49"},
+  {field:"shelter",      grp:"External",  en:"External retractable shelter",  basis:"count", tons:1, cost:100000, src:"?", ref:"HG p.49"},
+  // —— Drones ——
+  {field:"miningDrones", grp:"Drones",    en:"Mining drones (t)",             basis:"perTon", costPerTon:100000, tl:8, src:"xlsx", ref:"HG p.62"},
+  {field:"repairDrones", grp:"Drones",    en:"Repair drones (1% hull, min 1t)",basis:"hullPct", pct:0.01, minTons:1, costPerTon:200000, tl:8, src:"xlsx", ref:"HG p.62"},
+  // —— Fuel ——
+  {field:"ramscoop",     grp:"Fuel",      en:"Ramscoop (1% hull +5t, min 10t)",basis:"hullPct", pct:0.01, addTons:5, minTons:10, costPerTon:250000, src:"xlsx", ref:"HG p.49"},
+  {field:"collapsibleTank",grp:"Fuel",    en:"Collapsible fuel tank (t, in cargo)",basis:"perTon", costPerTon:500, inCargo:true, src:"xlsx", ref:"HG p.49"},
+  {field:"mountableTank",grp:"Fuel",      en:"Mountable fuel tank (t, in cargo)",basis:"perTon", costPerTon:1000, inCargo:true, src:"xlsx", ref:"HG p.49"},
+  {field:"fuelCargoCont",grp:"Fuel",      en:"Fuel/cargo container (t, in cargo)",basis:"perTon", costPerTon:5000, inCargo:true, src:"?", ref:"HG p.49"},
+  // —— Cargo handling ——
+  {field:"cargoNet",     grp:"Cargo",     en:"Cargo net (5t)",                basis:"count", tons:5, cost:1000000, src:"xlsx", ref:"HG p.58"},
+  {field:"cargoScoop",   grp:"Cargo",     en:"Cargo scoop (2t)",              basis:"count", tons:2, cost:500000, src:"xlsx", ref:"HG p.58"},
+  {field:"haulerNet",    grp:"Cargo",     en:"Interplanetary hauler net (capacity t)",basis:"capPct", pct:0.08, costPerTon:100000, src:"xlsx", ref:"HG p.58", unit:"t carried"},
+  {field:"jumpNet",      grp:"Cargo",     en:"Jump net (capacity t)",         basis:"capPct", pct:0.10, costPerTon:300000, src:"xlsx", ref:"HG p.58", unit:"t carried"},
+  {field:"armBulkhead",  grp:"Cargo",     en:"Armoured bulkhead (protected t)",basis:"capPct", pct:0.10, costPerTon:200000, src:"xlsx", ref:"HG p.58", unit:"t protected"},
+  // —— Facilities ——
+  {field:"baseSupport",  grp:"Facilities",en:"Base support facility",         basis:"count", tons:12, cost:4000000, tl:10, src:"xlsx", ref:"HG p.59"},
+  {field:"constructionDeck",grp:"Facilities",en:"Construction deck (t)",     basis:"perTon", costPerTon:500000, src:"xlsx", ref:"HG p.59"},
+  {field:"gamingSpace",  grp:"Facilities",en:"Gaming space (persons, 1.5t ea)",basis:"count", tons:1.5, cost:9000, src:"xlsx", ref:"HG p.59"},
+  {field:"shrine",       grp:"Facilities",en:"Shrine to heroes",              basis:"count", tons:4, cost:500000, src:"xlsx", ref:"HG p.59"},
+  {field:"roboticsLab",  grp:"Facilities",en:"Robotics laboratory",           basis:"count", tons:4, cost:500000, src:"xlsx", ref:"HG p.57"},
+  {field:"securitySys",  grp:"Facilities",en:"Security system",               basis:"count", tons:1, cost:1000000, src:"?", ref:"HG p.57"},
+  {field:"heatMgmt",     grp:"Facilities",en:"Heat management system",        basis:"count", tons:2, cost:2000000, power:1, src:"?", ref:"HG p.57"},
+  {field:"cerMinor",     grp:"Droyne",    en:"Minor ceremonial space",        basis:"count", tons:6,  cost:1500000,  src:"xlsx", ref:"?"},
+  {field:"cerMajor",     grp:"Droyne",    en:"Major ceremonial space",        basis:"count", tons:20, cost:20000000, src:"xlsx", ref:"?"},
+  {field:"cerMinorCit",  grp:"Droyne",    en:"Minor ceremonial citadel",      basis:"count", tons:12, cost:9000000,  src:"xlsx", ref:"?"},
+  {field:"cerMajorCit",  grp:"Droyne",    en:"Major ceremonial citadel",      basis:"count", tons:40, cost:60000000, src:"xlsx", ref:"?"},
+  // —— Safety ——
+  {field:"escapePods",   grp:"Safety",    en:"Escape pods (persons)",         basis:"count", tons:1, cost:500000, src:"?", ref:"HG p.57"},
+  {field:"assaultPods",  grp:"Safety",    en:"Assault pods (persons)",        basis:"count", tons:1, cost:100000, src:"?", ref:"HG p.57"},
+  {field:"selfDestruct", grp:"Safety",    en:"Self-destruct system",          basis:"flag",  tons:1, cost:500000, src:"?", ref:"HG p.57"},
 ];
 
 function computeShip(cfg, overrides={}){
@@ -1672,6 +1745,21 @@ function computeShip(cfg, overrides={}){
   // Sensors (p.21)
   const sn=D.sensors[cfg.sensors];
   mk("snTons",sn.tons); mk("snCost",sn.cost); tl(sn.tl,cfg.sensors+" sensors","HG p.21");
+  // v0.5.90 — optional sensor packages (DATA.options.sensorPackages, Excel 7-Sensors). cfg.sensorPkgs = {key:qty}.
+  let pkgT=0, pkgC=0, pwPkgs=0; ship.pkgLines=[];
+  for(const [k,q0] of Object.entries(cfg.sensorPkgs||{})){ const d=D.options.sensorPackages[k], q=+q0||0; if(!d||q<=0) continue;
+    let t=0,c=0,pw=0;
+    switch(d.basis){
+      case "unit":    t=q*d.tons; c=q*d.cost; pw=q*d.power; break;
+      case "perTon":  t=q; c=q*d.costPerTon; pw=d.powerFlat||0; break;
+      case "arrayX":  t=q*d.tonsX*sn.tons; c=q*d.costX*sn.cost; pw=q*d.powerX*sn.power; break;
+      case "pctHull": t=q*Math.ceil(H*d.pct); c=t*d.costPerTon; pw=0; break;
+    }
+    tl(d.tl,d.label,"sensor packages");
+    if(d.basis==="arrayX"&&sn.tons===0) ship.notes.push(M(`${d.label}: multiple of the main sensor — ${cfg.sensors} sensors are 0 t / Cr0, so this adds nothing`,`${d.label} : multiple du senseur principal — senseurs ${cfg.sensors} = 0 t / Cr0, rien n'est ajouté`));
+    pkgT+=t; pkgC+=c; pwPkgs+=pw; ship.pkgLines.push({label:d.label,qty:q,tons:t,cost:c,src:d.src});
+  }
+  mk("pkgTons",r1(pkgT)); mk("pkgCost",rCr(pkgC));
   // Weapons (p.26-39)
   const hardpoints=Math.floor(H/D.weapons.hardpointsPer);
   let wTons=0,wCost=0,wPower=0,gunnerTurrets=0;
@@ -1689,8 +1777,27 @@ function computeShip(cfg, overrides={}){
     if(t.weapons.length>m.slots) ship.alerts.push(M(`${t.mount}: ${t.weapons.length} weapons > ${m.slots} slots`,`${t.mount} : ${t.weapons.length} armes > ${m.slots} emplacements`));
     if(t.popup){ wTons+=D.weapons.popup.tons; wCost+=D.weapons.popup.cost; tl(D.weapons.popup.tl,"Pop-up mount","HG p.28"); }
   }
-  if(cfg.turrets.length>hardpoints) ship.alerts.push(M(`${cfg.turrets.length} mounts > ${hardpoints} hardpoints (1/100t) — HG p.26`,`${cfg.turrets.length} affûts > ${hardpoints} points d\u2019emport (1/100t) — HG p.26`));
+  // v0.5.90 — HEAVY WEAPONS (DATA.weapons.baySizes/bayWeapons, pointDefense, spinalMounts — Excel 8a-Weapons). Page refs UNCHECKED.
+  //   cfg.bays = [{size:"small|medium|large", weapon}] ; cfg.pd = [type, …] ; cfg.spinal = name | "".
+  let hpUsed=cfg.turrets.length, bayT=0,bayC=0,pdT=0,pdC=0,spT=0,spC=0,hwPower=0,hwGunners=0, unsourced=[];
+  for(const b of (cfg.bays||[])){ const sz=D.weapons.baySizes[b.size], w=sz&&(D.weapons.bayWeapons[b.size]||{})[b.weapon]; if(!w) continue;
+    bayT+=sz.tons; bayC+=w.cost; hwPower+=w.power; hwGunners+=sz.gunners; hpUsed+=sz.hp;
+    tl(w.tl,`${b.weapon} (${b.size} bay)`,"bays"); if(w.src) unsourced.push(`${b.weapon} (${b.size})`); }
+  for(const n of (cfg.pd||[])){ const pd=D.weapons.pointDefense[n]; if(!pd) continue;
+    pdT+=pd.tons; pdC+=pd.cost; hwPower+=pd.power; hwGunners+=D.weapons.pdGunners; hpUsed+=D.weapons.pdHp; tl(pd.tl,n,"point defence"); }
+  const spD=cfg.spinal?D.weapons.spinalMounts[cfg.spinal]:null;
+  if(spD){ spT=spD.tons; spC=spD.cost; hwPower+=spD.power; tl(spD.tl,cfg.spinal+" spinal mount","spinal mounts"); if(spD.src) unsourced.push(cfg.spinal+" spinal");
+    if(spD.tons>=H) ship.alerts.push(M(`Spinal mount ${cfg.spinal} (${spD.tons} t) does not fit a ${H} t hull`,`Arme spinale ${cfg.spinal} (${spD.tons} t) ne tient pas dans une coque de ${H} t`));
+    ship.notes.push(M(`Spinal mount: hardpoint use and gunner crew not computed yet (rule unchecked) — add gunners by hand`,`Arme spinale : points d\u2019emport et artilleurs non calculés (règle non vérifiée) — ajouter les artilleurs à la main`)); }
+  if(unsourced.length) ship.notes.push(M(`Unsourced weapon data (not in reference Excel, unverified): ${unsourced.join(", ")}`,`Données d\u2019arme non sourcées (absentes de l\u2019Excel de référence, non vérifiées) : ${unsourced.join(", ")}`));
+  wPower+=hwPower; gunnerTurrets+=hwGunners;
+  if(hpUsed>hardpoints) ship.alerts.push(M(`${hpUsed} mounts > ${hardpoints} hardpoints (1/100t) — HG p.26`,`${hpUsed} affûts > ${hardpoints} points d\u2019emport (1/100t) — HG p.26`));
   mk("wTons",wTons); mk("wCost",rCr(wCost));
+  mk("bayTons",bayT); mk("bayCost",rCr(bayC)); mk("pdTons",pdT); mk("pdCost",rCr(pdC)); mk("spinalTons",spT); mk("spinalCost",rCr(spC));
+  // v0.5.90 — screens & globes (DATA.screens, Excel 8b-Screens). cfg.screens = [type, …]
+  let scrT=0,scrC=0,pwScreens=0;
+  for(const n of (cfg.screens||[])){ const sc=D.screens[n]; if(!sc) continue; scrT+=sc.tons; scrC+=sc.cost; pwScreens+=sc.power||0; tl(sc.tl,n,"screens"); }
+  mk("scrTons",scrT); mk("scrCost",rCr(scrC));
   const mslType=D.weapons.missileTypes[cfg.mslType]; tl(cfg.ammo>0?mslType.tl:0,cfg.mslType+" missiles","HG p.36");
   const torpType=D.weapons.torpedoTypes[cfg.torpType]; tl(cfg.torp>0?torpType.tl:0,cfg.torpType+" torpedoes","HG p.39");
   // P7: mixed magazine — extra ammo types summed alongside the primary type (folds into ammoTons/torpTons/cost → counts in used tonnage & costTotal automatically)
@@ -1815,6 +1922,29 @@ function computeShip(cfg, overrides={}){
   const beltD=D.options.loadingBelt[cfg.beltTL||"TL7"]||D.options.loadingBelt["TL7"];
   mk("beltTons",(cfg.belts||0)*beltD.tons); mk("beltCost",rCr((cfg.belts||0)*beltD.cost));
   if(cfg.belts>0) tl(beltD.tl,"Loading Belt","HG p.53");
+  // v0.5.90 — EXTRAS reducer (see EXTRAS[] above). cfg.extras = {field:value}. Absent = 0 -> no cell change on existing profiles.
+  let exT=0, exC=0, pwExtras=0; ship.extraLines=[];
+  for(const it of EXTRAS){ const raw=(cfg.extras||{})[it.field]; const v=(it.basis==="flag"||it.basis==="hullPct"||it.basis==="hullCost")?(raw?1:0):(+raw||0);
+    if(!v||v<0) continue;
+    let t=0,c=0,pw=0;
+    switch(it.basis){
+      case "count":   t=v*it.tons; c=v*it.cost; pw=v*(it.power||0); break;
+      case "perTon":  t=v; c=v*it.costPerTon; pw=v*(it.powerPerTon||0); break;
+      case "flag":    t=it.tons; c=it.cost; pw=it.power||0; break;
+      case "hullPct": t=Math.max(it.minTons||0,H*it.pct+(it.addTons||0)); c=t*it.costPerTon; break;
+      case "hullCost":t=0; c=H*it.costPerHullTon; break;
+      case "capPct":  t=v*it.pct; c=t*it.costPerTon; break;
+      case "craftX":  t=v*it.mult; c=t*it.costPerTon; pw=t*(it.powerPerTon||0); break;
+    }
+    t=r1(t); c=rCr(c);
+    if(it.tl) tl(it.tl,it.en,it.ref);
+    const counted=it.inCargo?0:t;
+    exT+=counted; exC+=c; pwExtras+=pw;
+    ship.extraLines.push({field:it.field,label:it.en,qty:v,basis:it.basis,tons:t,cost:c,inCargo:!!it.inCargo,src:it.src});
+  }
+  if(ship.extraLines.some(l=>l.src==="?")) ship.notes.push(M(`Unverified option rates (not in reference Excel): ${ship.extraLines.filter(l=>l.src==="?").map(l=>l.label).join(", ")}`,`Tarifs d\u2019options non vérifiés (absents de l\u2019Excel de référence) : ${ship.extraLines.filter(l=>l.src==="?").map(l=>l.label).join(", ")}`));
+  if(ship.extraLines.some(l=>l.inCargo)) ship.notes.push(M("Fuel tanks/containers marked « in cargo » use cargo-hold space — their tonnage is not deducted again","Réservoirs/conteneurs « en soute » occupent la soute — leur tonnage n\u2019est pas déduit une 2e fois"));
+  mk("exTons",r1(exT)); mk("exCost",rCr(exC));
   // Power need (p.17 + systems)
   const needBasic=H*D.power.needBasicPct;
   const mdPow=(D.driveMods[cfg.mdMod]||D.driveMods.none).powMult, jdPow=(D.driveMods[cfg.jdMod]||D.driveMods.none).powMult;
@@ -1830,7 +1960,8 @@ function computeShip(cfg, overrides={}){
     +pwLow+pwElow
     +pwMed+pwBio
     +pwBelts
-    +pwLS+pwME; // HG p.53 ; +Life Scanner D24 ; +Multi-Env D26
+    +pwLS+pwME // HG p.53 ; +Life Scanner D24 ; +Multi-Env D26
+    +pwScreens+pwPkgs+pwExtras; // v0.5.90 (0 on every existing profile)
   mk("powerNeed",rUpI(needBasic+needM+needJ+needSys));
   // v0.5.72 (clarif. JS, HG p.17) — DIMENSIONNEUR = DEUX PHASES MUTUELLEMENT EXCLUSIVES, jamais la somme.
   //   vol = base+manœuvre+systèmes ; saut = base+saut (manœuvre + systèmes non essentiels coupés = jump dimming).
@@ -1844,7 +1975,7 @@ function computeShip(cfg, overrides={}){
   const ppRequired=rUpI(Math.max(needBasic+needM+needSys, needBasic+needJ));
   mk("ppRequired",ppRequired);
   ship.powerBreakdown={basic:rUpI(needBasic),m:rUpI(needM),j:rUpI(needJ),sys:rUpI(needSys),
-    det:{sensors:pwSensors,weapons:pwWeapons,proc:pwProc,low:pwLow,elow:pwElow,med:pwMed,bio:pwBio,belts:pwBelts,lifeScanner:pwLS,multiEnv:pwME}};
+    det:{sensors:pwSensors,weapons:pwWeapons,proc:pwProc,low:pwLow,elow:pwElow,med:pwMed,bio:pwBio,belts:pwBelts,lifeScanner:pwLS,multiEnv:pwME,screens:pwScreens,sensorPkgs:pwPkgs,extras:pwExtras}};
   const pp=D.power.plants[cfg.plant];
   mk("ppSuggested",Math.ceil(ppRequired/pp.perTon)*pp.perTon);   // Power suggéré (centrale entière couvrant le plancher)
   let ppT=(+cfg.power>0)
@@ -1954,7 +2085,8 @@ function computeShip(cfg, overrides={}){
     +C.bridgeTons.value+C.snTons.value+C.wTons.value+C.ammoTons.value+C.torpTons.value
     +C.stateTons.value+C.lowTons.value+C.miscAccTons.value+C.commonTons.value+C.craftTons.value+C.airlockTons.value+C.beltTons.value
     +C.procTons.value+C.medTons.value+C.labTons.value+C.libTons.value+C.hideTons.value
-    +C.armouryTons.value+C.briefTons.value+C.bioTons.value+C.probeTons.value+C.workTons.value+C.craneTons.value+C.aeroTons.value+C.capTons.value+C.clampTons.value+C.ssTons.value+C.lsTons.value+C.comfTons.value+C.diversTons.value+C.energyTons.value+C.adjHullTons.value+C.flTons.value);
+    +C.armouryTons.value+C.briefTons.value+C.bioTons.value+C.probeTons.value+C.workTons.value+C.craneTons.value+C.aeroTons.value+C.capTons.value+C.clampTons.value+C.ssTons.value+C.lsTons.value+C.comfTons.value+C.diversTons.value+C.energyTons.value+C.adjHullTons.value+C.flTons.value
+    +C.pkgTons.value+C.bayTons.value+C.pdTons.value+C.spinalTons.value+C.scrTons.value+C.exTons.value); // v0.5.90
   mk("tonsUsed",used); mk("cargoTons",r1(H-used));
   mk("costTotal",rCr(C.hullCost.value+C.armCost.value+C.mdCost.value+C.jdCost.value
     +C.ppCost.value+C.compCost.value+C.swCost.value+C.snCost.value+C.wCost.value
@@ -1962,7 +2094,8 @@ function computeShip(cfg, overrides={}){
     +C.stateCost.value+C.lowCost.value+C.miscAccCost.value+C.commonCost.value+C.craftCost.value+C.airlockCost.value+C.beltCost.value
     +C.procCost.value+C.scoopsCost.value+C.medCost.value+C.labCost.value
     +C.libCost.value+C.hideCost.value+C.armouryCost.value+C.briefCost.value+C.bioCost.value
-    +C.probeCost.value+C.workCost.value+C.bridgeCost.value+C.extCargoCost.value+C.craneCost.value+C.aeroCost.value+C.capCost.value+C.clampCost.value+C.ssCost.value+C.lsCost.value+C.comfCost.value+C.diversCost.value+C.energyCost.value+C.adjHullCost.value+C.flCost.value));
+    +C.probeCost.value+C.workCost.value+C.bridgeCost.value+C.extCargoCost.value+C.craneCost.value+C.aeroCost.value+C.capCost.value+C.clampCost.value+C.ssCost.value+C.lsCost.value+C.comfCost.value+C.diversCost.value+C.energyCost.value+C.adjHullCost.value+C.flCost.value
+    +C.pkgCost.value+C.bayCost.value+C.pdCost.value+C.spinalCost.value+C.scrCost.value+C.exCost.value)); // v0.5.90
   mk("costStandard",rCr(C.costTotal.value*0.9)); // É-002: 10% standard design discount — applied, decomposition open
   mk("buildWeeks", Math.ceil(Math.sqrt(H)));  // HG p.8 Construction Times: commercial shipyard = ceil(√tonnage) weeks (reliquat É-007 soldé v0.5.4)
   ship.notes.push(M(`Build time ${C.buildWeeks.value} wk = ceil(√${H}t) at a typical commercial shipyard — HG p.8. High-TL yards reduce it (Construction Time Reduction); a new design also adds a starship architect fee = +1% of final cost.`,`Temps de construction ${C.buildWeeks.value} sem = ceil(√${H}t) dans un chantier commercial typique — HG p.8. Les chantiers à haut TL le réduisent (Construction Time Reduction) ; un design inédit ajoute aussi des honoraires d\u2019architecte = +1 % du coût final.`));
@@ -2002,6 +2135,7 @@ function computeShip(cfg, overrides={}){
 /* ============================== UI ============================== */
 const $=id=>document.getElementById(id);
 let overrides={}, turrets=[], craft=[], magazine=[], software=["Manoeuvre/0","Library","Jump Control/2"];
+let bays=[], pdList=[], screensList=[];   // v0.5.90
 let crewSet={};   // v0.5.78 (Q5) : choix designer par poste d'équipage (role -> n), vide = suggestions RAW
 
 function fill(sel,entries,val){ $(sel).innerHTML=entries.map(e=>`<option>${e}</option>`).join(""); if(val)$(sel).value=val; }
@@ -2018,6 +2152,39 @@ fill("bWeapon",Object.keys(DATA.weapons.barbettes),"Particle Barbette");
 fill("inMslType",Object.keys(DATA.weapons.missileTypes),"Standard");
 fill("inTorpType",Object.keys(DATA.weapons.torpedoTypes),"Standard");
 $("bAdd").onclick=()=>{ turrets.push({mount:"BARBETTE",weapons:[$("bWeapon").value],popup:false}); renderTurrets(); render(); };
+// v0.5.90 — bays / point defence / spinal / screens / sensor packages / EXTRAS
+const srcMark=d=>d&&d.src==="?"?" ⚠":"";
+function repopBayWeapons(){ const sz=$("bySize").value, W=DATA.weapons.bayWeapons[sz]||{};
+  $("byWeapon").innerHTML=Object.keys(W).map(k=>`<option value="${k}">${k} (TL${W[k].tl}, MCr${W[k].cost/1e6}, ${W[k].power}pw)${srcMark(W[k])}</option>`).join(""); }
+$("bySize").onchange=repopBayWeapons; repopBayWeapons();
+$("pdType").innerHTML=Object.keys(DATA.weapons.pointDefense).map(k=>`<option value="${k}">${k} (TL${DATA.weapons.pointDefense[k].tl})</option>`).join("");
+$("inSpinal").innerHTML=`<option value="">— none —</option>`+Object.entries(DATA.weapons.spinalMounts).map(([k,d])=>`<option value="${k}">${k} (TL${d.tl}, ${d.tons}t)${srcMark(d)}</option>`).join("");
+$("scrType").innerHTML=Object.entries(DATA.screens).map(([k,d])=>`<option value="${k}">${k} (TL${d.tl}, ${d.tons}t, ${d.power}pw)</option>`).join("");
+function renderHW(){
+  const chips=[...bays.map((b,i)=>({t:`${b.size} bay: ${b.weapon}`,kind:"bay",i})),...pdList.map((n,i)=>({t:n,kind:"pd",i}))];
+  $("hwList").innerHTML=chips.map(c=>`<span class="chip">${c.t}<b data-k="${c.kind}" data-i="${c.i}">×</b></span>`).join("");
+  $("hwList").querySelectorAll(".chip b").forEach(b=>b.onclick=()=>{ (b.dataset.k==="bay"?bays:pdList).splice(+b.dataset.i,1); renderHW(); render(); });
+}
+function renderScreens(){
+  $("scrList").innerHTML=screensList.map((n,i)=>`<span class="chip">${n}<b data-i="${i}">×</b></span>`).join("");
+  $("scrList").querySelectorAll(".chip b").forEach(b=>b.onclick=()=>{ screensList.splice(+b.dataset.i,1); renderScreens(); render(); });
+}
+$("byAdd").onclick=()=>{ bays.push({size:$("bySize").value,weapon:$("byWeapon").value}); renderHW(); render(); };
+$("pdAdd").onclick=()=>{ pdList.push($("pdType").value); renderHW(); render(); };
+$("scrAdd").onclick=()=>{ screensList.push($("scrType").value); renderScreens(); render(); };
+$("pkgBox").innerHTML=Object.entries(DATA.options.sensorPackages).map(([k,d])=>
+  `<div class="row"><label>${d.label}${srcMark(d)}<span class="ref">TL${d.tl} · ${d.notes||""}</span></label><input type="number" class="pkgIn" data-k="${k}" value="0" min="0"></div>`).join("");
+(function buildExtras(){ let g="", h="";
+  for(const it of EXTRAS){ if(it.grp!==g){ g=it.grp; h+=`<div class="row" style="opacity:.6;font-size:11px;margin-top:.3em">${g}</div>`; }
+    const isChk=(it.basis==="flag"||it.basis==="hullPct"||it.basis==="hullCost");
+    const ref=`${it.ref||""}${it.tl?" · TL"+it.tl:""}`;
+    h+=`<div class="row"><label>${it.en}${it.src==="?"?" ⚠":""}<span class="ref">${ref}</span></label>`
+      +(isChk?`<input type="checkbox" class="exIn" data-f="${it.field}">`:`<input type="number" class="exIn" data-f="${it.field}" value="0" min="0">`)+`</div>`; }
+  $("extrasBox").innerHTML=h; })();
+["pkgBox","extrasBox"].forEach(id=>{ $(id).addEventListener("input",render); $(id).addEventListener("change",render); });
+$("inSpinal").addEventListener("change",render);
+function readPkgs(){ const o={}; document.querySelectorAll("#pkgBox .pkgIn").forEach(e=>{ const v=+e.value||0; if(v>0) o[e.dataset.k]=v; }); return o; }
+function readExtras(){ const o={}; document.querySelectorAll("#extrasBox .exIn").forEach(e=>{ const v=e.type==="checkbox"?e.checked:(+e.value||0); if(v) o[e.dataset.f]=v; }); return o; }
 
 function renderSW(){
   $("swList").innerHTML=software.map((s,i)=>`<span class="chip">${s}<b data-i="${i}">×</b></span>`).join("")
@@ -2053,6 +2220,7 @@ function readCfg(){ return {
   comp:$("inComp").value, bis:$("inBis").checked, fib:$("inFib").checked,
   software:[...software], crew:{...crewSet}, sensors:$("inSensors").value,
   turrets:JSON.parse(JSON.stringify(turrets)), magazine:JSON.parse(JSON.stringify(magazine)), ammo:+$("inAmmo").value,
+  bays:JSON.parse(JSON.stringify(bays)), pd:[...pdList], spinal:$("inSpinal").value, screens:[...screensList], sensorPkgs:readPkgs(), extras:readExtras(),   // v0.5.90
   mslType:$("inMslType").value, torp:+$("inTorp").value, torpType:$("inTorpType").value,
   staterooms:+$("inState").value, double:+$("inDouble").value,
   high2:+$("inHigh2").value, lux:+$("inLux").value, low:+$("inLow").value,
@@ -2092,6 +2260,7 @@ const LEXIQUE={
   medTons:"Infirmerie",labTons:"Laboratoires",libTons:"Bibliothèque",armouryTons:"Armurerie",briefTons:"Salle de briefing",bioTons:"Biosphère",
   probeTons:"Drones-sondes",workTons:"Atelier",airlockTons:"Sas supplémentaires",airlockCost:"Coût sas",beltTons:"Tapis de chargement",beltCost:"Coût tapis",hideTons:"Dissimulé",
   extCargoTons:"Support de cargo externe",extCargoCost:"Coût support cargo externe",craneTons:"Grue de cargo",craneCost:"Coût grue de cargo",aeroTons:"Aerofins",aeroCost:"Coût aerofins",capTons:"Capsules de rentrée",capCost:"Coût capsules",clampTons:"Docking clamps",clampCost:"Coût docking clamps",ssTons:"Postes de capteurs",ssCost:"Coût postes de capteurs",lsTons:"Scanner de vie",lsCost:"Coût scanner de vie",comfTons:"Confort & common areas",comfCost:"Coût confort",diversTons:"Systèmes divers",diversCost:"Coût systèmes divers",energyTons:"Stockage & secours",energyCost:"Coût stockage & secours",emergTons:"Énergie de secours",emergCost:"Coût énergie de secours",batTons:"Batteries",batCost:"Coût batteries",batStored:"Énergie stockée (tampon)",stableTons:"Écurie",stableCost:"Coût écurie",stableLifeCost:"Vie écurie (récurrent)",vaultTons:"Chambre forte",vaultCost:"Coût chambre forte",boobyCost:"Sas piégé",multiEnvTons:"Espace multi-environnement",multiEnvCost:"Coût multi-environnement",radCost:"Blindage anti-radiation",advEntCost:"Divertissement avancé",brewTons:"Brasserie",brewCost:"Coût brasserie",kitchenTons:"Cuisine gastronomique",kitchenCost:"Coût cuisine",hottubTons:"Jacuzzi",hottubCost:"Coût jacuzzi",poolTons:"Piscine",poolCost:"Coût piscine",theatreTons:"Théâtre",theatreCost:"Coût théâtre",wetbarCost:"Wet bar",zerogCost:"Salle zéro-G",studioTons:"Studios",studioCost:"Coût studios",trainTons:"Salle d'entraînement",trainCost:"Coût entraînement",
+  pkgTons:"Modules de capteurs",pkgCost:"Coût modules de capteurs",bayTons:"Baies d'armement",bayCost:"Coût baies",pdTons:"Défense rapprochée",pdCost:"Coût défense rapprochée",spinalTons:"Arme spinale",spinalCost:"Coût arme spinale",scrTons:"Écrans",scrCost:"Coût écrans",exTons:"Autres systèmes",exCost:"Coût autres systèmes",
   tonsUsed:"Tonnage utilisé",cargoTons:"SOUTE (résiduel)",crewTotal:"Équipage (RAW)",
   costTotal:"COÛT (1ᵉʳ de classe)",costStandard:"COÛT (standard −10%, É-002)",buildWeeks:"Temps de construction (√tonnage, HG p.8)",
   combinedTons:"Masse combinée (cargo ext.)",effThrust:"Poussée effective",effJump:"Saut effectif",
@@ -2149,10 +2318,12 @@ const ROWS=[
   ["fuelTons","Fuel","t"],
   ["sec","COMMAND"],["bridgeTons","Bridge","t"],["bridgeCost","Bridge cost","Cr"],
   ["compCost","Computer","Cr"],["bandwidth","Bandwidth installed / processing",""],["swCost","Software","Cr"],
-  ["snTons","Sensors","t"],["snCost","Sensors cost","Cr"],
+  ["snTons","Sensors","t"],["snCost","Sensors cost","Cr"],["pkgTons","Sensor packages","t"],["pkgCost","Sensor packages cost","Cr"],
   ["sec","WEAPONS"],["wTons","Mounts & barbettes","t"],["wCost","Weapons cost","Cr"],
   ["ammoTons","Missile ammo","t"],["ammoCost","Missiles cost","Cr"],
   ["torpTons","Torpedo ammo","t"],["torpCost","Torpedoes cost","Cr"],
+  ["bayTons","Bays","t"],["bayCost","Bays cost","Cr"],["pdTons","Point defence","t"],["pdCost","Point defence cost","Cr"],
+  ["spinalTons","Spinal mount","t"],["spinalCost","Spinal mount cost","Cr"],["scrTons","Screens","t"],["scrCost","Screens cost","Cr"],
   ["sec","ACCOMMODATION"],["stateTons","Staterooms (all)","t"],["stateCost","Staterooms cost","Cr"],
   ["lowTons","Low berths","t"],["lowCost","Low berths cost","Cr"],
   ["miscAccTons","Bench/barracks/cabin/brig","t"],["miscAccCost","… cost","Cr"],
@@ -2163,6 +2334,7 @@ const ROWS=[
   ["armouryTons","Armoury","t"],["briefTons","Briefing","t"],["bioTons","Biosphere","t"],
   ["probeTons","Probe drones","t"],["workTons","Workshop","t"],["airlockTons","Extra airlocks","t"],["airlockCost","Airlocks cost","Cr"],["beltTons","Loading belts","t"],["beltCost","Belts cost","Cr"],["hideTons","Concealed","t"],
   ["extCargoTons","External cargo mount","t"],["extCargoCost","Ext. cargo mount cost","Cr"],["craneTons","Cargo crane","t"],["craneCost","Cargo crane cost","Cr"],["aeroTons","Aerofins","t"],["aeroCost","Aerofins cost","Cr"],["capTons","Re-entry capsules","t"],["capCost","Capsules cost","Cr"],["clampTons","Docking clamps","t"],["clampCost","Docking clamps cost","Cr"],["ssTons","Sensor stations","t"],["ssCost","Sensor stations cost","Cr"],["lsTons","Life scanner","t"],["lsCost","Life scanner cost","Cr"],["comfTons","Comfort & common areas","t"],["comfCost","Comfort & common areas cost","Cr"],["diversTons","Misc systems","t"],["diversCost","Misc systems cost","Cr"],["energyTons","Energy storage & backup","t"],["energyCost","Energy storage & backup cost","Cr"],["batStored","Battery stored power",""],
+  ["exTons","More systems","t"],["exCost","More systems cost","Cr"],
   ["sec","TOTALS"],["tonsUsed","Tonnage used","t"],["cargoTons","CARGO (residual)","t"],
   ["crewTotal","Crew (RAW)",""],["costTotal","COST (first in class)","Cr"],["costStandard","COST (standard −10%, É-002)","Cr"],
   ["buildWeeks","Build time (√tonnage, HG p.8)","wk"],
@@ -2361,6 +2533,7 @@ function ficheTable(ship,cfg,C){
   add("Bridge",(cfg.bridge==="small"?"Smaller Bridge":"Standard")+(cfg.holo?", Holographic Controls":"")+(cfg.detach?", Detachable":""),tval("bridgeTons"),cval("bridgeCost"));
   add("Computer",cfg.comp+(cfg.bis?"bis":"")+(cfg.fib?" (fib)":""),"—",cval("compCost"));
   add("Sensors",cfg.sensors,tval("snTons"),cval("snCost"));
+  if(v("pkgTons")>0||v("pkgCost")>0) add("Sensors",(ship.pkgLines||[]).map(l=>l.qty>1?`${l.label} x${l.qty}`:l.label).join(", "),tval("pkgTons"),cval("pkgCost")); // v0.5.90
   if(v("wTons")>0||v("wCost")>0){
     const grp={};
     (cfg.turrets||[]).forEach(t=>{ const w={}; (t.weapons||[]).forEach(x=>w[x]=(w[x]||0)+1);
@@ -2370,6 +2543,13 @@ function ficheTable(ship,cfg,C){
     add("Weapons",descs.shift()||"Mounts & barbettes",tval("wTons"),cval("wCost"));
     descs.forEach(d=>add("Weapons",d,"·","·"));
   }
+  { const grpB={}; (cfg.bays||[]).forEach(b=>{ const d=`${b.size[0].toUpperCase()+b.size.slice(1)} Bay (${b.weapon})`; grpB[d]=(grpB[d]||0)+1; }); // v0.5.90
+    if(v("bayTons")>0||v("bayCost")>0) add("Weapons",Object.entries(grpB).map(([d,c])=>c>1?c+"× "+d:d).join(", "),tval("bayTons"),cval("bayCost"));
+    const grpP={}; (cfg.pd||[]).forEach(n=>grpP[n]=(grpP[n]||0)+1);
+    if(v("pdTons")>0||v("pdCost")>0) add("Weapons",Object.entries(grpP).map(([d,c])=>c>1?c+"× "+d:d).join(", "),tval("pdTons"),cval("pdCost"));
+    if(v("spinalTons")>0||v("spinalCost")>0) add("Weapons",`Spinal Mount (${cfg.spinal})`,tval("spinalTons"),cval("spinalCost"));
+    const grpS={}; (cfg.screens||[]).forEach(n=>grpS[n]=(grpS[n]||0)+1);
+    if(v("scrTons")>0||v("scrCost")>0) add("Screens",Object.entries(grpS).map(([d,c])=>c>1?c+"× "+d:d).join(", "),tval("scrTons"),cval("scrCost")); }
   (cfg.magazine||[]).forEach(m=>add("Ammunition",`${m.kind==="torpedo"?"Torpedo":"Missile"} Magazine (${m.type})`,num(m.tons),"—"));
   if(v("ammoTons")>0) add("Ammunition",`Missile Storage (${((cfg.ammo||v("ammoTons"))*12)} missiles)`,tval("ammoTons"),cval("ammoCost"));
   if(v("torpTons")>0) add("Ammunition","Torpedo Storage",tval("torpTons"),cval("torpCost"));
@@ -2426,6 +2606,7 @@ function ficheTable(ship,cfg,C){
     ["batTons","batCost",null,"Batteries"],
     [null,"boobyCost",null,"Booby Trap"]];
   SYS.forEach(([tk,ck,df,lbl])=>{ if((tk&&v(tk)>0)||(ck&&v(ck)>0)) add("Systems",df?df():lbl,tk?tval(tk):"—",cval(ck)); });
+  (ship.extraLines||[]).forEach(l=>add("Systems",(l.basis==="count"&&l.qty>1?`${l.label} x${l.qty}`:l.label)+(l.inCargo?" [in cargo]":""),l.tons>0?num(l.tons):"—",l.cost>0?mcr(l.cost):"—")); // v0.5.90 EXTRAS (no per-line cell-lock ; aggregate exTons/exCost is lockable)
   const stp=[];
   if(cfg.staterooms>0)stp.push(`Standard x${cfg.staterooms}`);
   if(cfg.double>0)stp.push(`Double Occupancy x${cfg.double}`);
@@ -2510,10 +2691,11 @@ function renderWeaponState(ship,cfg,C){
     const d=`${t.mount}${t.popup?" (pop-up)":""} (${Object.entries(w).map(([n,c])=>c>1?c+"× "+n:n).join(", ")||(fr?"vide":"empty")})`;
     grp[d]=(grp[d]||0)+1; });
   Object.entries(grp).forEach(([d,c])=>parts.push(c>1?c+"× "+d:d));
+  (cfg.bays||[]).forEach(b=>parts.push(`${b.size} bay ${b.weapon}`)); (cfg.pd||[]).forEach(n=>parts.push(n)); if(cfg.spinal) parts.push(`spinal ${cfg.spinal}`); // v0.5.90
   if(cfg.ammo>0) parts.push(`${fr?"Munitions missiles":"Missile ammo"} ${cfg.ammo}t ${cfg.mslType} (${cfg.ammo*12} msl)`);
   if(cfg.torp>0) parts.push(`${fr?"Munitions torpilles":"Torpedo ammo"} ${cfg.torp}t ${cfg.torpType} (${cfg.torp*3} trp)`);
   (cfg.magazine||[]).forEach(m=>parts.push(`${fr?"Magazine":"Magazine"} ${m.tons}t ${m.kind==="torpedo"?(fr?"torpille":"torpedo"):"missile"} ${m.type}`));
-  const w=C.wTons.value+C.ammoTons.value+C.torpTons.value, c=C.wCost.value+C.ammoCost.value+C.torpCost.value;
+  const w=C.wTons.value+C.ammoTons.value+C.torpTons.value+C.bayTons.value+C.pdTons.value+C.spinalTons.value, c=C.wCost.value+C.ammoCost.value+C.torpCost.value+C.bayCost.value+C.pdCost.value+C.spinalCost.value;
   el.innerHTML = parts.length
     ? parts.join(" · ")+` <span class="ss-tot">— ${parseFloat(w.toFixed(2))} t · MCr${parseFloat((c/1e6).toFixed(4))}</span>`
     : `<span class="ss-empty">${fr?"aucun armement monté":"no weapons mounted"}</span>`;
@@ -2557,7 +2739,8 @@ function render(){
       const postes=[[_fr?"base":"basic",pb.basic],[_fr?"manœuvre":"manoeuvre",pb.m],[_fr?"saut":"jump",pb.j],
         [_fr?"capteurs":"sensors",dt.sensors],[_fr?"armes":"weapons",dt.weapons],[_fr?"processeur carb.":"fuel processor",dt.proc],
         ["low berths",dt.low],["emerg. low",dt.elow],["medbay",dt.med],[_fr?"biosphère":"biosphere",dt.bio],
-        [_fr?"tapis de charge":"loading belts",dt.belts],["life scanner",dt.lifeScanner],["multi-env",dt.multiEnv]]
+        [_fr?"tapis de charge":"loading belts",dt.belts],["life scanner",dt.lifeScanner],["multi-env",dt.multiEnv],
+        [_fr?"écrans":"screens",dt.screens],[_fr?"modules capteurs":"sensor pkgs",dt.sensorPkgs],[_fr?"autres systèmes":"more systems",dt.extras]]
         .filter(p=>p[1]>0).map(p=>`${p[0]} ${p[1]}`).join(" · ");
       const pVol=(pb.basic||0)+(pb.m||0)+(pb.sys||0), pSaut=(pb.basic||0)+(pb.j||0);
       const badge=ship.jumpDimming
@@ -2583,7 +2766,8 @@ function render(){
     ["ammoTons"],["torpTons"],["stateTons"],["lowTons"],["miscAccTons"],["commonTons"],["craftTons"],["procTons"],
     ["medTons"],["labTons"],["libTons"],["armouryTons"],["briefTons"],["bioTons"],["probeTons"],["workTons"],
     ["aeroTons"],["capTons"],["clampTons"],["ssTons"],["airlockTons"],["beltTons"],["hideTons"],["craneTons"],
-    ["lsTons"],["comfTons"],["diversTons"],["energyTons"]]; // v0.5.57 #3 : liste complète -> restant = cargoTons réel
+    ["lsTons"],["comfTons"],["diversTons"],["energyTons"],
+    ["adjHullTons"],["flTons"],["pkgTons"],["bayTons"],["pdTons"],["spinalTons"],["scrTons"],["exTons"]]; // v0.5.57 #3 : liste complète -> restant = cargoTons réel
   const gUsed=C.tonsUsed.value, gHull=ship.hullTons, gOver=gUsed>gHull;
   $("tonLabel").textContent=_fr?"Tonnage utilisé / disponible":"Tonnage used / available";
   $("tonGauge").innerHTML=`<div class="gfill ${gOver?"bad":"ok"}" style="width:${Math.max(0,Math.min(100,gUsed/gHull*100))}%"></div>`
@@ -2708,11 +2892,16 @@ function applyCfg(cfg,cells){
   turrets=Array.isArray(cfg.turrets)?JSON.parse(JSON.stringify(cfg.turrets)):[];
   craft=Array.isArray(cfg.craft)?cfg.craft.map(c=>({type:"smallcraft",cost:0,...c})):[]; // É-012: type absent = smallcraft (legacy)
   magazine=Array.isArray(cfg.magazine)?JSON.parse(JSON.stringify(cfg.magazine)):[];       // P7: magazine absent = [] (legacy)
+  // v0.5.90 — heavy weapons / screens / sensor packages / extras (absent = none : anti-collage)
+  bays=Array.isArray(cfg.bays)?JSON.parse(JSON.stringify(cfg.bays)):[]; pdList=Array.isArray(cfg.pd)?[...cfg.pd]:[]; screensList=Array.isArray(cfg.screens)?[...cfg.screens]:[];
+  $("inSpinal").value=cfg.spinal||"";
+  document.querySelectorAll("#pkgBox .pkgIn").forEach(e=>{ e.value=(cfg.sensorPkgs||{})[e.dataset.k]||0; });
+  document.querySelectorAll("#extrasBox .exIn").forEach(e=>{ const v=(cfg.extras||{})[e.dataset.f]; if(e.type==="checkbox") e.checked=!!v; else e.value=+v||0; });
   if($("illusProfile")) $("illusProfile").value=cfg.classe||"";   // profil choisi (clé classe, back-compat)
   if($("illusMode")) $("illusMode").value = cfg.illusMode || (cfg.classe ? "profil" : "proc"); // legacy : classe renseignée → mode profil
   if(typeof syncIllusCtl==="function") syncIllusCtl();
   overrides={}; if(cells) for(const k in cells){ if(cells[k]&&cells[k].forced) overrides[k]=cells[k].value; } // restore forced cells
-  repopMagType();renderSW();renderTurrets();renderCraft();renderMag();resetRoster();render();
+  repopMagType();renderSW();renderTurrets();renderCraft();renderMag();renderHW();renderScreens();resetRoster();render();
 }
 // ===== Démarrage : profil neutre 100 t (page blanche) + profils HG VALIDÉS =====
 // JS (cahier des charges) : on démarre page blanche, ou on charge un profil HG choisi.
